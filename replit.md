@@ -228,6 +228,8 @@ All services are located in `db/services/`:
   - Inventory update functionality using inventoryService.updateInventoryPricing
   - Robust number handling to support zero values (wholesale price, min/max stock)
   - Form validation and error handling
+  - Connected to product update button in inventory list
+  - Fixed category update issue by implementing proper inventory data refresh in useInventoryData hook
 
 #### October 13, 2025
 
