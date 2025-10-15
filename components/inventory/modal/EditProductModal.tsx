@@ -57,6 +57,8 @@ interface FormData {
     barcode: string;
     description: string;
     unit: string;
+    quantity: string;
+    quantityPerUnit: string;
     minStock: string;
     maxStock: string;
     location: string;
@@ -92,6 +94,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
         barcode: '',
         description: '',
         unit: '',
+        quantity: '',
+        quantityPerUnit: '',
         minStock: '',
         maxStock: '',
         location: '',
@@ -108,6 +112,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                 barcode: item.barcode || '',
                 description: '',
                 unit: item.unit || 'pcs',
+                quantity: item.quantity?.toString() || '',
+                quantityPerUnit: '',
                 minStock: item.minStock?.toString() || '',
                 maxStock: item.maxStock?.toString() || '',
                 location: item.location || '',
@@ -234,7 +240,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
             visible={visible}
             animationType='slide'
             presentationStyle='pageSheet'
-            onRequestClose={handleClose}>
+            onRequestClose={handleClose}
+        >
             <SafeAreaView className='flex-1 bg-white'>
                 <View className='flex-row justify-between items-center px-4 py-4 border-b border-gray-200'>
                     <Text className='text-xl font-bold text-black'>Edit Product</Text>
@@ -266,7 +273,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                         </Text>
                         <TouchableOpacity
                             className='bg-gray-100 rounded-lg text-gray-700 text-base rounded-lg px-3 py-3 flex-row justify-between items-center'
-                            onPress={showCreateCategoryForm}>
+                            onPress={showCreateCategoryForm}
+                        >
                             <Text className={selectedCategory ? 'text-gray-900' : 'text-gray-400'}>
                                 {selectedCategory
                                     ? `${selectedCategory.icon} ${selectedCategory.name}`
@@ -294,13 +302,15 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                                                     categoryId: cat.id,
                                                 }));
                                                 setShowCategoryDropdown(false);
-                                            }}>
+                                            }}
+                                        >
                                             <Text
                                                 className={
                                                     formData.categoryId === cat.id
                                                         ? 'text-blue-600 font-medium'
                                                         : 'text-gray-900'
-                                                }>
+                                                }
+                                            >
                                                 {cat.icon} {cat.name}
                                             </Text>
                                         </TouchableOpacity>
@@ -310,7 +320,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                                         onPress={() => {
                                             setShowCreateCategory(true);
                                             setShowCategoryDropdown(false);
-                                        }}>
+                                        }}
+                                    >
                                         <Text className='text-blue-600 font-medium'>
                                             <Ionicons name='add-circle' size={16} color='#2563EB' />{' '}
                                             Create New Category
@@ -390,7 +401,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                                                 icon: '📦',
                                                 color: '#6B7280',
                                             });
-                                        }}>
+                                        }}
+                                    >
                                         <Text className='text-center font-medium text-gray-700'>
                                             Cancel
                                         </Text>
@@ -402,13 +414,15 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                                                 : 'bg-gray-300'
                                         }`}
                                         onPress={handleCreateCategory}
-                                        disabled={!newCategoryData.name.trim()}>
+                                        disabled={!newCategoryData.name.trim()}
+                                    >
                                         <Text
                                             className={`text-center font-medium ${
                                                 newCategoryData.name.trim()
                                                     ? 'text-white'
                                                     : 'text-gray-500'
-                                            }`}>
+                                            }`}
+                                        >
                                             Create
                                         </Text>
                                     </TouchableOpacity>
@@ -477,6 +491,29 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                             />
                         </View>
                     </View>
+                    <View className='flex-row mb-4 gap-3'>
+                        <View className='flex-1'>
+                            <FormInput
+                                label='Quatity per Unit'
+                                value={formData.quantityPerUnit}
+                                onChangeText={(text) =>
+                                    setFormData((prev) => ({ ...prev, quantityPerUnit: text }))
+                                }
+                                placeholder='eg 500ml, 6pcs, 1 dozen etc.'
+                            />
+                        </View>
+                        <View className='flex-1'>
+                            <FormInput
+                                label='Inventory Quantity'
+                                value={formData.quantity}
+                                onChangeText={(text) =>
+                                    setFormData((prev) => ({ ...prev, quantity: text }))
+                                }
+                                placeholder='0'
+                                keyboardType='numeric'
+                            />
+                        </View>
+                    </View>
 
                     <View className='flex-row mb-4 gap-3'>
                         <View className='flex-1'>
@@ -533,7 +570,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                     <TouchableOpacity
                         className='flex-1 bg-gray-200 rounded-xl py-4 mx-2'
                         onPress={handleClose}
-                        disabled={loading}>
+                        disabled={loading}
+                    >
                         <Text className='text-center font-semibold text-gray-700'>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -544,11 +582,9 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                         }`}
                         onPress={handleSubmit}
                         disabled={
-                            loading ||
-                            !formData.name ||
-                            !formData.categoryId ||
-                            !formData.price
-                        }>
+                            loading || !formData.name || !formData.categoryId || !formData.price
+                        }
+                    >
                         {loading ? (
                             <ActivityIndicator color='white' />
                         ) : (
@@ -557,7 +593,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                                     formData.name && formData.categoryId && formData.price
                                         ? 'text-white'
                                         : 'text-gray-500'
-                                }`}>
+                                }`}
+                            >
                                 Update Product
                             </Text>
                         )}
