@@ -137,8 +137,51 @@ export function useInventoryData(): {
     }, [rawCategories, inventory]);
 
     const refreshinvetoryData = async () => {
-        // simple trigger to indicate loading; real refresh logic can be added if necessary
+        if (!selectedStore) {
+            return;
+        }
+
         setLoading(true);
+        
+        try {
+            const invData = await inventoryCollection
+                .query(Q.where('store_id', selectedStore.id))
+                .fetch();
+
+            const inventoryWithDetails = await Promise.all(
+                invData.map(async (inv: any) => {
+                    const product = await inv.product.fetch();
+                    const category = await product.category.fetch();
+
+                    const viewItem: InventoryViewItem = {
+                        id: inv.id,
+                        productId: product.id,
+                        name: product.name,
+                        category: category.name,
+                        categoryId: category.id,
+                        categoryIcon: category.icon,
+                        categoryColor: category.color,
+                        quantity: inv.quantity || 0,
+                        minStock: inv.minStock || 0,
+                        maxStock: inv.maxStock || 100,
+                        price: inv.price || 0,
+                        cost: inv.weightedAvgCost || product.cost || 0,
+                        unit: product.unit || 'pcs',
+                        barcode: product.barcode || '',
+                        location: inv.location || '',
+                        lastUpdated: inv.lastUpdated || new Date(),
+                    };
+
+                    return viewItem;
+                }),
+            );
+
+            setInventory(inventoryWithDetails);
+        } catch (error) {
+            console.error('Error refreshing inventory data:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return {

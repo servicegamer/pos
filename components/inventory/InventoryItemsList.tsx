@@ -1,4 +1,5 @@
-import { CategoryItem, InventoryViewItem } from '@/types';
+import { Category } from '@/db';
+import { CategoryData, CategoryItem, InventoryViewItem } from '@/types';
 import React from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { InventoryItem } from './InventoryItem';
@@ -6,9 +7,34 @@ import { InventoryItem } from './InventoryItem';
 interface InventoryListProps {
     data: InventoryViewItem[];
     filterText: string | undefined;
-    onSave: (updatedItem: any) => void;
+    onSave: (updatedItem: InventoryViewItem) => void;
     onDelete: (itemId: string) => void;
     availableCategories: CategoryItem[];
+    addCategory?: (newCategoryData: CategoryData) => Promise<Category | undefined>;
+    loadingCategories?: boolean;
+    refreshCategories?: () => Promise<void>;
+    updateProduct?: (
+        productId: string,
+        updates: Partial<{
+            name: string;
+            categoryId: string;
+            cost: number;
+            barcode: string;
+            description: string;
+            unit: string;
+            status: string;
+        }>,
+    ) => Promise<void>;
+    updateInventory?: (
+        inventoryId: string,
+        updates: {
+            price?: number;
+            wholeSalePrice?: number;
+            minStock?: number;
+            maxStock?: number;
+            location?: string;
+        },
+    ) => Promise<void>;
 }
 
 export const InventoryList: React.FC<InventoryListProps> = ({
@@ -17,6 +43,11 @@ export const InventoryList: React.FC<InventoryListProps> = ({
     onSave,
     onDelete,
     availableCategories,
+    addCategory,
+    loadingCategories,
+    refreshCategories,
+    updateProduct,
+    updateInventory,
 }) => {
     return (
         <View className='flex-1'>
@@ -36,6 +67,11 @@ export const InventoryList: React.FC<InventoryListProps> = ({
                         onSave={onSave}
                         onDelete={onDelete}
                         availableCategories={availableCategories}
+                        addCategory={addCategory}
+                        loadingCategories={loadingCategories}
+                        refreshCategories={refreshCategories}
+                        updateProduct={updateProduct}
+                        updateInventory={updateInventory}
                     />
                 )}
             />

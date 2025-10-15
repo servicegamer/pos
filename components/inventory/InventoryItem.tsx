@@ -1,16 +1,40 @@
-import { CategoryItem as CategoryType, InventoryViewItem } from '@/types';
+import { Category } from '@/db';
+import { CategoryData, CategoryItem as CategoryType, InventoryViewItem } from '@/types';
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+import { EditProductModal } from './modal/EditProductModal';
 
 interface InventoryItemProps {
     item: InventoryViewItem;
-    onSave: (updatedItem: any) => void;
+    onSave: (updatedItem: InventoryViewItem) => void;
     onDelete: (itemId: string) => void;
     availableCategories: CategoryType[];
-    addCategory?: (newCategoryData: any) => Promise<any>;
+    addCategory?: (newCategoryData: CategoryData) => Promise<Category | undefined>;
     loadingCategories?: boolean;
     refreshCategories?: () => Promise<void>;
+    updateProduct?: (
+        productId: string,
+        updates: Partial<{
+            name: string;
+            categoryId: string;
+            cost: number;
+            barcode: string;
+            description: string;
+            unit: string;
+            status: string;
+        }>,
+    ) => Promise<void>;
+    updateInventory?: (
+        inventoryId: string,
+        updates: {
+            price?: number;
+            wholeSalePrice?: number;
+            minStock?: number;
+            maxStock?: number;
+            location?: string;
+        },
+    ) => Promise<void>;
 }
 
 // this should be the main item :
@@ -20,8 +44,10 @@ export const InventoryItem: React.FC<InventoryItemProps> = ({
     onDelete,
     availableCategories,
     addCategory,
-    loadingCategories,
+    loadingCategories = false,
     refreshCategories,
+    updateProduct,
+    updateInventory,
 }) => {
     const getBorderClass = () => {
         // derive stock states from quantity/minStock
@@ -32,8 +58,8 @@ export const InventoryItem: React.FC<InventoryItemProps> = ({
 
     const [showEditModal, setShowEditModal] = useState(false);
 
-    const handleSave = (updatedItem: any) => {
-        onSave(updatedItem);
+    const handleProductUpdated = () => {
+        onSave(item);
         setShowEditModal(false);
     };
 
@@ -72,6 +98,21 @@ export const InventoryItem: React.FC<InventoryItemProps> = ({
                     {item.category} | ${item.price.toFixed(2)} | {item.unit}
                 </Text>
             </View>
+
+            {updateProduct && updateInventory && addCategory && refreshCategories && (
+                <EditProductModal
+                    visible={showEditModal}
+                    onClose={() => setShowEditModal(false)}
+                    onProductUpdated={handleProductUpdated}
+                    item={item}
+                    categories={availableCategories}
+                    addCategory={addCategory}
+                    loadingCategories={loadingCategories}
+                    refreshCategories={refreshCategories}
+                    updateProduct={updateProduct}
+                    updateInventory={updateInventory}
+                />
+            )}
         </>
     );
 };

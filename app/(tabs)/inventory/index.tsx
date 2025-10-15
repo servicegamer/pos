@@ -127,6 +127,34 @@ const InventoryTab = () => {
         return newCategory;
     };
 
+    const handleUpdateProduct = async (
+        productId: string,
+        updates: Partial<{
+            name: string;
+            categoryId: string;
+            cost: number;
+            barcode: string;
+            description: string;
+            unit: string;
+            status: string;
+        }>,
+    ) => {
+        await productService.updateProduct(productId, updates);
+    };
+
+    const handleUpdateInventory = async (
+        inventoryId: string,
+        updates: {
+            price?: number;
+            wholeSalePrice?: number;
+            minStock?: number;
+            maxStock?: number;
+            location?: string;
+        },
+    ) => {
+        await inventoryService.updateInventoryPricing(inventoryId, updates);
+    };
+
     const handleSaveItem = (updatedItem: Product) => {
         console.log('Save item:', updatedItem);
         refreshinvetoryData();
@@ -176,6 +204,11 @@ const InventoryTab = () => {
                 onSave={handleSaveItem}
                 onDelete={handleDeleteItem}
                 availableCategories={categories}
+                addCategory={handleCreateCategory}
+                loadingCategories={loading}
+                refreshCategories={refreshinvetoryData}
+                updateProduct={handleUpdateProduct}
+                updateInventory={handleUpdateInventory}
             />
 
             <ProductModal
