@@ -1,5 +1,6 @@
 import { AuthHeader } from '@/components/auth/AuthHeader';
 import { SignInForm } from '@/components/auth/SignInForm';
+import { useAuth } from '@/contexts/AuthContext';
 import { authenticateUser } from '@/db/services/userService';
 import { AuthData } from '@/types';
 import { router } from 'expo-router';
@@ -7,14 +8,22 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 
 export default function SignInScreen() {
+    const { login, isAuthenticated } = useAuth();
+
+    // Redirect when authentication state changes
+    React.useEffect(() => {
+        if (isAuthenticated) {
+            router.replace('/(tabs)/checkout');
+        }
+    }, [isAuthenticated]);
+
     const handleSignUp = () => {
         router.replace('/auth/signup');
     };
 
     const handleLogin = async (userdata: AuthData) => {
         try {
-            console.log('Logging in with:', userdata);
-            const user = await authenticateUser(userdata);
+            const user = await login(userdata.email, userdata.password);
             if (!user) {
                 console.log('Authentication failed');
                 return;

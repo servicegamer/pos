@@ -5,21 +5,36 @@ import { BehaviorSubject, Observable, of } from 'rxjs';
 import { distinctUntilChanged, map, shareReplay, switchMap } from 'rxjs/operators';
 import { database, sessionCollection } from '..';
 
+const STORAGE_KEY = 'currentSessionId';
+
 export const storedSessionId$ = new BehaviorSubject<string | null>(null);
 
 async function initFromStorage() {
     try {
-        // Find the first active session in the database
+        // Try to get session ID from local storage first
+        const savedSessionId:string|undefined = await database.localStorage.get(STORAGE_KEY);
+        
+        if (savedSessionId) {
+            // Verify the session exists and is active
+            const session = await sessionCollection.find(savedSessionId);
+            if (session?.isActive) {
+                storedSessionId$.next(session.id);
+                return;
+            }
+        }
+
+        // If no valid saved session, find the first active session
         const activeSessions = await sessionCollection
             .query(Q.where('is_active', true), Q.sortBy('created_at', Q.desc))
             .fetch();
 
         if (activeSessions.length > 0) {
-            // Use the most recent active session
             const session = activeSessions[0];
             storedSessionId$.next(session.id);
+            await database.localStorage.set(STORAGE_KEY, session.id);
         } else {
             storedSessionId$.next(null);
+            await database.localStorage.remove(STORAGE_KEY);
         }
     } catch (e) {
         console.log('error init storage ', e);
@@ -62,6 +77,7 @@ export async function createSession(userId: string): Promise<Session | null> {
             });
         });
         storedSessionId$.next(session.id);
+        await database.localStorage.set(STORAGE_KEY, session.id);
         return session;
     } catch {
         return null;
@@ -77,6 +93,7 @@ export async function activateSession(sessionId: string): Promise<void> {
         });
     });
     storedSessionId$.next(sessionId);
+    await database.localStorage.set(STORAGE_KEY, sessionId);
 }
 
 export async function deactivateUserSessions(userId: string): Promise<void> {
@@ -106,4 +123,5 @@ export async function endCurrentSession(): Promise<void> {
         });
     }
     storedSessionId$.next(null);
+    await database.localStorage.remove(STORAGE_KEY);
 }

@@ -13,6 +13,7 @@ import {
     endCurrentSession,
     storedSessionId$,
 } from './sessionsService';
+import { hashPassword, verifyPassword } from '@/utils/passwordHash';
 
 export const currentUser$: Observable<User | null> = activeSession$.pipe(
     switchMap((s) => {
@@ -24,6 +25,7 @@ export const currentUser$: Observable<User | null> = activeSession$.pipe(
 );
 
 export async function authenticateUser(data: AuthData): Promise<User | null> {
+    console.log('Authenticating user with email:', data.email);
     const user = await firstValueFrom(
         userCollection
             .query(Q.where('email', data.email.trim()))
@@ -33,8 +35,17 @@ export async function authenticateUser(data: AuthData): Promise<User | null> {
     if (!user?.id) {
         throw new Error('User not found');
     }
+    console.log('User found:', user.email, "password hash", user.passwordHash);
+    // Verify password
+    if (!data.password) {
+        throw new Error('Password is required');
+    }
+    const isValid = await verifyPassword(data.password.trim(), user.passwordHash);
+    if (!isValid) {
+        throw new Error('Invalid password');
 
-    const existing = await database
+    }   
+     const existing = await database
         .get<Session>('sessions')
         .query(Q.where('user_id', user.id))
         .fetch();
