@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import DatabaseProvider from '@nozbe/watermelondb/react/DatabaseProvider';
 import { BusinessProvider } from '@/contexts/BusinessContext';
+import { CartProvider } from '@/contexts/CartContext';
 import { database } from '@/db';
 
 export default function RootLayout() {
@@ -19,11 +20,13 @@ export default function RootLayout() {
             <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <BusinessProvider>
                     <AuthProvider>
-                        <Stack screenOptions={{ headerShown: false }}>
-                            <Stack.Screen name='index' />
-                            <Stack.Screen name='(tabs)' />
-                            <Stack.Screen name='auth' />
-                        </Stack>
+                        <CartProvider>
+                            <Stack screenOptions={{ headerShown: false }}>
+                                <Stack.Screen name='index' />
+                                <Stack.Screen name='(tabs)' />
+                                <Stack.Screen name='auth' />
+                            </Stack>
+                        </CartProvider>
                     </AuthProvider>
                 </BusinessProvider>
                 <StatusBar style='auto' />

@@ -3,22 +3,26 @@ import { CategoriesGrid } from '@/components/checkout/CategoriesGrid';
 import { QuickReferenceSection } from '@/components/checkout/QuickReferenceSection';
 import { Header } from '@/components/common/Header';
 import { SearchBar } from '@/components/common/SearchBar';
-import { CATEGORIES } from '@/constants/categories';
-import { QUICK_ITEMS } from '@/constants/quickItems';
-import { useCart } from '@/hooks/useCart';
-import { Category } from '@/types';
+import { useCart } from '@/contexts/CartContext';
+import { useCheckoutData } from '@/hooks/useCheckoutData';
 import { router } from 'expo-router';
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+interface CategoryPressItem {
+    id: string;
+    name: string;
+}
 
 const ShopPOS: React.FC = () => {
     const [isSearchFocused, setIsSearchFocused] = React.useState(false);
     const [searchText, setSearchText] = React.useState('');
 
-    const { globalCart, totalCartItems, totalCartPrice, updateGlobalCart } = useCart();
+    const { cart, totalItems, totalPrice } = useCart();
+    const { categories, loading } = useCheckoutData();
 
-    const handleCategoryPress = (category: Category) => {
+    const handleCategoryPress = (category: CategoryPressItem) => {
         // Navigate to category screen with params
         router.push({
             pathname: '/(tabs)/checkout/category',
@@ -30,11 +34,31 @@ const ShopPOS: React.FC = () => {
     };
 
     const handleMainCartCheckout = () => {
-        if (totalCartItems > 0) {
-            // Navigate to payment screen
+        if (totalItems > 0) {
             router.push('/(tabs)/checkout/payment');
         }
     };
+
+    if (loading) {
+        return (
+            <SafeAreaView className='flex-1 bg-white'>
+                <Header title='Shop POS'>
+                    <SearchBar
+                        placeholder='Search products...'
+                        isSearchFocused={isSearchFocused}
+                        onFocus={() => setIsSearchFocused(true)}
+                        onBlur={() => setIsSearchFocused(false)}
+                        value={searchText}
+                        onChangeText={setSearchText}
+                    />
+                </Header>
+                <View className='flex-1 items-center justify-center'>
+                    <ActivityIndicator size='large' color='#000' />
+                    <Text className='mt-2 text-gray-600'>Loading categories...</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView className='flex-1 bg-white'>
@@ -50,18 +74,14 @@ const ShopPOS: React.FC = () => {
             </Header>
 
             <ScrollView className='flex-1' showsVerticalScrollIndicator={false}>
-                <CategoriesGrid categories={CATEGORIES} onCategoryPress={handleCategoryPress} />
+                <CategoriesGrid categories={categories} onCategoryPress={handleCategoryPress} />
 
-                <QuickReferenceSection
-                    quickItems={QUICK_ITEMS}
-                    globalCart={globalCart}
-                    setGlobalCart={updateGlobalCart}
-                />
+                <QuickReferenceSection />
             </ScrollView>
 
             <CartSummaryBar
-                totalItems={totalCartItems}
-                totalPrice={totalCartPrice}
+                totalItems={totalItems}
+                totalPrice={totalPrice}
                 onCheckout={handleMainCartCheckout}
             />
         </SafeAreaView>

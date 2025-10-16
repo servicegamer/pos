@@ -84,7 +84,7 @@ export const salesService = {
             if (sale.onCredit && sale.customerId) {
                 const customer = await customersCollection.find(sale.customerId);
 
-                await customer.update((c: any) => {
+                await customer.update((c) => {
                     c.currentBalance = (c.currentBalance || 0) + sale.totalAmount;
                 });
             }

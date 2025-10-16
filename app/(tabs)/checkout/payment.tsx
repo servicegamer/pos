@@ -9,86 +9,85 @@ import { PaymentMethodsSection } from '@/components/checkout/PaymentMethodsSecti
 import { PayButton } from '@/components/checkout/PayButton';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCheckoutLogic } from '@/hooks/useCheckoutLogic';
-import { useCart } from '@/hooks/useCart';
+import { useCart } from '@/contexts/CartContext';
 
 const PaymentScreen: React.FC = () => {
-	// Get cart from global state instead of props
-	const { globalCart, clearCart } = useCart();
+        const { cart, clearCart } = useCart();
 
-	const {
-		paymentMethods,
-		selectedPaymentMethod,
-		showStoreCreditForm,
-		creditAmount,
-		setCreditAmount,
-		storeCreditFormHeight,
-		storeCreditOpacity,
-		handlePaymentMethodSelect,
-	} = usePaymentMethods();
+        const {
+                paymentMethods,
+                selectedPaymentMethod,
+                showStoreCreditForm,
+                creditAmount,
+                setCreditAmount,
+                storeCreditFormHeight,
+                storeCreditOpacity,
+                handlePaymentMethodSelect,
+        } = usePaymentMethods();
 
-	// Handler for payment completion
-	const handlePaymentComplete = (paymentMethod: string, amount: number) => {
-		console.log(`Payment: ${paymentMethod}, Amount: $${amount}`);
-		clearCart();
-		// Navigate back to main checkout screen
-		router.push('/(tabs)/checkout/payment');
-	};
+        // Handler for payment completion
+        const handlePaymentComplete = (paymentMethod: string, amount: number) => {
+                console.log(`Payment: ${paymentMethod}, Amount: $${amount}`);
+                clearCart();
+                // Navigate back to main checkout screen
+                router.push('/(tabs)/checkout/payment');
+        };
 
-	const {
-		searchQuery,
-		setSearchQuery,
-		isSearchFocused,
-		handleSearchFocus,
-		handleSearchBlur,
-		total,
-		maxCredit,
-		handlePay,
-		getPayAmount,
-		isPayButtonDisabled,
-	} = useCheckoutLogic(globalCart, selectedPaymentMethod, creditAmount, handlePaymentComplete);
+        const {
+                searchQuery,
+                setSearchQuery,
+                isSearchFocused,
+                handleSearchFocus,
+                handleSearchBlur,
+                total,
+                maxCredit,
+                handlePay,
+                getPayAmount,
+                isPayButtonDisabled,
+        } = useCheckoutLogic(cart, selectedPaymentMethod, creditAmount, handlePaymentComplete);
 
-	return (
-		<SafeAreaView className='flex-1 bg-gray-50'>
-			<KeyboardAvoidingView
-				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-				className='flex-1'>
-				<ScrollView
-					className='flex-1'
-					showsVerticalScrollIndicator={false}
-					keyboardShouldPersistTaps='handled'>
-					<Header title='Checkout'>
-						{/* Use router.back() instead of onBack prop */}
-						<BackButton onPress={() => router.back()} className='mr-4' />
-					</Header>
+        return (
+                <SafeAreaView className='flex-1 bg-gray-50'>
+                        <KeyboardAvoidingView
+                                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                                className='flex-1'>
+                                <ScrollView
+                                        className='flex-1'
+                                        showsVerticalScrollIndicator={false}
+                                        keyboardShouldPersistTaps='handled'>
+                                        <Header title='Checkout'>
+                                                {/* Use router.back() instead of onBack prop */}
+                                                <BackButton onPress={() => router.back()} className='mr-4' />
+                                        </Header>
 
-					<OrderSummary cartItems={globalCart} total={total} />
+                                        <OrderSummary cartItems={cart} total={total} />
 
-					<PaymentMethodsSection
-						paymentMethods={paymentMethods}
-						selectedPaymentMethod={selectedPaymentMethod}
-						onPaymentMethodSelect={handlePaymentMethodSelect}
-						showStoreCreditForm={showStoreCreditForm}
-						creditAmount={creditAmount}
-						onCreditAmountChange={setCreditAmount}
-						maxCredit={maxCredit}
-						searchQuery={searchQuery}
-						onSearchChange={setSearchQuery}
-						isSearchFocused={isSearchFocused}
-						onSearchFocus={handleSearchFocus}
-						onSearchBlur={handleSearchBlur}
-						storeCreditFormHeight={storeCreditFormHeight}
-						storeCreditOpacity={storeCreditOpacity}
-					/>
+                                        <PaymentMethodsSection
+                                                paymentMethods={paymentMethods}
+                                                selectedPaymentMethod={selectedPaymentMethod}
+                                                onPaymentMethodSelect={handlePaymentMethodSelect}
+                                                showStoreCreditForm={showStoreCreditForm}
+                                                creditAmount={creditAmount}
+                                                onCreditAmountChange={setCreditAmount}
+                                                maxCredit={maxCredit}
+                                                searchQuery={searchQuery}
+                                                onSearchChange={setSearchQuery}
+                                                isSearchFocused={isSearchFocused}
+                                                onSearchFocus={handleSearchFocus}
+                                                onSearchBlur={handleSearchBlur}
+                                                storeCreditFormHeight={storeCreditFormHeight}
+                                                storeCreditOpacity={storeCreditOpacity}
+                                        />
 
-					<PayButton
-						onPress={handlePay}
-						amount={getPayAmount()}
-						disabled={isPayButtonDisabled()}
-					/>
-				</ScrollView>
-			</KeyboardAvoidingView>
-		</SafeAreaView>
-	);
+                                        <PayButton
+                                                onPress={handlePay}
+                                                amount={getPayAmount()}
+                                                disabled={isPayButtonDisabled()}
+                                        />
+                                </ScrollView>
+                        </KeyboardAvoidingView>
+                </SafeAreaView>
+        );
 };
 
 export default PaymentScreen;

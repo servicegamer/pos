@@ -2,50 +2,71 @@ import { CartSummaryBar } from '@/components/checkout/CartSummaryBar';
 import { ProductList } from '@/components/checkout/ProductList';
 import { CategoryHeader } from '@/components/common/CategoryHeader';
 import { SearchBar } from '@/components/common/SearchBar';
-import { CATEGORIES } from '@/constants/categories';
-import { useCart } from '@/hooks/useCart';
-import { useProducts } from '@/hooks/useProducts';
+import { useCart } from '@/contexts/CartContext';
+import { useCheckoutData } from '@/hooks/useCheckoutData';
 import { useSearch } from '@/hooks/useSearch';
+import { Product } from '@/types';
 import { router, useLocalSearchParams } from 'expo-router';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const CategoryScreen: React.FC = () => {
-    // Get category info from route params
     const { categoryId, categoryName } = useLocalSearchParams();
 
-    // Find the full category object from constants
-    const category = CATEGORIES.find((cat) => cat.id === categoryId);
-
-    // Get cart from global state
-    const { globalCart, updateGlobalCart } = useCart();
+    const { cart, totalItems, totalPrice, addToCart, updateQuantity } = useCart();
+    const { categories, inventory } = useCheckoutData();
 
     const { searchQuery, setSearchQuery, isSearchFocused, handleSearchFocus, handleSearchBlur } =
         useSearch();
 
-    const { addToCart, removeFromCart, filteredProducts, cartTotals, getCartItems } = useProducts(
-        category?.name || '',
-        globalCart,
-        updateGlobalCart,
-    );
+    const category = categories.find((cat) => cat.id === categoryId);
 
-    const filtered = filteredProducts(searchQuery);
-    const { totalItems, totalPrice } = cartTotals;
+    const categoryProducts: Product[] = useMemo(() => {
+        return inventory
+            .filter((inv) => inv.categoryId === categoryId)
+            .map((inv) => {
+                const cartItem = cart.find((item) => item.id === inv.id);
+                return {
+                    id: inv.id,
+                    name: inv.productName,
+                    category: inv.categoryName,
+                    price: inv.price,
+                    stock: inv.quantity,
+                    unit: inv.unit,
+                    code: inv.barcode,
+                    inCart: cartItem ? cartItem.quantity : 0,
+                };
+            });
+    }, [inventory, categoryId, cart]);
+
+    const filteredProducts = useMemo(() => {
+        return categoryProducts.filter(
+            (product) =>
+                product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (product.code && product.code.toLowerCase().includes(searchQuery.toLowerCase())),
+        );
+    }, [categoryProducts, searchQuery]);
+
+    const handleAddToCart = (product: Product) => {
+        addToCart({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            quantity: 1,
+        });
+    };
+
+    const handleRemoveFromCart = (product: Product) => {
+        const cartItem = cart.find((item) => item.id === product.id);
+        if (cartItem) {
+            updateQuantity(product.id, cartItem.quantity - 1);
+        }
+    };
 
     const handleCheckout = () => {
-        // Format cart items
-        const formattedCartItems = getCartItems().map((item) => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: item.inCart || 0,
-        }));
-
-        // Update global cart
-        updateGlobalCart(formattedCartItems);
-
-        // Navigate to payment screen
-        router.push('/(tabs)/checkout/payment');
+        if (totalItems > 0) {
+            router.push('/(tabs)/checkout/payment');
+        }
     };
 
     // Handle case where category is not found
@@ -73,7 +94,7 @@ const CategoryScreen: React.FC = () => {
         <SafeAreaView className='flex-1 bg-gray-50'>
             <CategoryHeader
                 category={category}
-                productCount={filtered.length}
+                productCount={filteredProducts.length}
                 onBack={() => router.back()}>
                 <SearchBar
                     placeholder={`Search ${category.name.toLowerCase()}...`}
@@ -86,11 +107,13 @@ const CategoryScreen: React.FC = () => {
             </CategoryHeader>
 
             <ProductList
-                products={filtered}
-                category={category}
+                products={filteredProducts}
+                category={
+                    category || { id: '', name: 'Unknown', color: '#000', icon: '', count: 0 }
+                }
                 searchQuery={searchQuery}
-                onAddToCart={addToCart}
-                onRemoveFromCart={removeFromCart}
+                onAddToCart={handleAddToCart}
+                onRemoveFromCart={handleRemoveFromCart}
             />
 
             {totalItems > 0 && (

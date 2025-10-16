@@ -1,33 +1,48 @@
-import { CartItem, QuickItem } from '@/types';
+import { useCart } from '@/contexts/CartContext';
+import { Minus, Plus } from 'lucide-react-native';
 import React, { useRef } from 'react';
-import {
-  Animated,
-  Text,
-  TouchableOpacity,
-} from 'react-native';
-import { useQuickItem } from '@/hooks/useQuickItem';
-import { Plus } from 'lucide-react-native';
+import { Animated, Text, TouchableOpacity } from 'react-native';
 import { AddButton } from '../ui/ActionButton';
 import { QuantityControls } from '../common/QuantityControls';
 
-interface QuickReferenceItemProps {
-  item: QuickItem;
-  globalCart: CartItem[];
-  setGlobalCart: (cart: CartItem[]) => void;
+interface QuickItem {
+    id: string;
+    name: string;
+    price: string;
 }
 
-export const QuickReferenceItem: React.FC<QuickReferenceItemProps> = ({
-  item,
-  globalCart,
-  setGlobalCart
-}) => {
-  const scaleValue = useRef(new Animated.Value(1)).current;
+interface QuickReferenceItemProps {
+    item: QuickItem;
+}
 
-  const {
-    currentQuantity,
-    addToCart,
-    removeFromCart
-  } = useQuickItem(item, globalCart, setGlobalCart);
+export const QuickReferenceItem: React.FC<QuickReferenceItemProps> = ({ item }) => {
+    const scaleValue = useRef(new Animated.Value(1)).current;
+    const { cart, addToCart, updateQuantity } = useCart();
+
+    const cartItem = cart.find((cartItem) => cartItem.id === item.id);
+    const currentQuantity = cartItem ? cartItem.quantity : 0;
+
+    const handleAddToCart = () => {
+        const priceValue = parseFloat(item.price.replace('$', ''));
+        addToCart({
+            id: item.id,
+            name: item.name,
+            price: priceValue,
+            quantity: 1,
+        });
+    };
+
+    const handleIncrease = () => {
+        if (cartItem) {
+            updateQuantity(item.id, cartItem.quantity + 1);
+        }
+    };
+
+    const handleDecrease = () => {
+        if (cartItem) {
+            updateQuantity(item.id, cartItem.quantity - 1);
+        }
+    };
 
   const handlePressIn = (): void => {
     Animated.spring(scaleValue, {
@@ -75,20 +90,16 @@ export const QuickReferenceItem: React.FC<QuickReferenceItemProps> = ({
           {item.price}
         </Text>
 
-        {/* Even simpler with convenience wrapper */}
         {currentQuantity > 0 ? (
-          <QuantityControls
-            quantity={currentQuantity}
-            onIncrease={addToCart}
-            onDecrease={removeFromCart}
-            size="sm"
-            variant="primary"
-          />
+            <QuantityControls
+                quantity={currentQuantity}
+                onIncrease={handleIncrease}
+                onDecrease={handleDecrease}
+                size='sm'
+                variant='primary'
+            />
         ) : (
-          <AddButton
-            onPress={addToCart}
-            size="sm"
-          />
+            <AddButton onPress={handleAddToCart} size='sm' />
         )}
       </Animated.View>
     </TouchableOpacity>
