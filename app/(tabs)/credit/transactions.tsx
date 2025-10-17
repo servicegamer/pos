@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -7,10 +7,75 @@ import { SearchBar } from '@/components/common/SearchBar';
 import { CreditTopTabs } from '@/components/credit/CreditTopTabs';
 import { useTransactions } from '@/hooks/useTransactions';
 import Sale from '@/db/models/sales';
+import SaleItem from '@/db/models/sales_items';
+import Product from '@/db/models/products';
+
+interface TransactionItemInfo {
+    transactionId: string;
+    itemsPreview: string;
+    itemCount: number;
+}
 
 const TransactionsScreen: React.FC = () => {
     const { transactions, isLoading, searchQuery, setSearchQuery, totalRevenue, totalCredit } =
         useTransactions();
+    const [transactionItems, setTransactionItems] = useState<Map<string, TransactionItemInfo>>(new Map());
+
+    useEffect(() => {
+        const fetchItemsForTransactions = async () => {
+            const itemsMap = new Map<string, TransactionItemInfo>();
+            
+            await Promise.all(
+                transactions.map(async (transaction) => {
+                    try {
+                        const items = await transaction.items.fetch();
+                        const itemCount = items.length;
+                        
+                        if (itemCount === 0) {
+                            itemsMap.set(transaction.id, {
+                                transactionId: transaction.id,
+                                itemCount: 0,
+                                itemsPreview: 'No items'
+                            });
+                            return;
+                        }
+
+                        const productNames = await Promise.all(
+                            items.slice(0, 2).map(async (item: SaleItem) => {
+                                const product = await item.product.fetch();
+                                return product.name;
+                            })
+                        );
+
+                        const preview = itemCount > 2 
+                            ? `${productNames.join(', ')} +${itemCount - 2} more`
+                            : productNames.join(', ');
+
+                        itemsMap.set(transaction.id, {
+                            transactionId: transaction.id,
+                            itemCount,
+                            itemsPreview: preview
+                        });
+                    } catch (error) {
+                        console.error('Error fetching items for transaction:', error);
+                        itemsMap.set(transaction.id, {
+                            transactionId: transaction.id,
+                            itemCount: 0,
+                            itemsPreview: 'Error loading items'
+                        });
+                    }
+                })
+            );
+            
+            setTransactionItems(itemsMap);
+        };
+
+        if (transactions.length > 0) {
+            fetchItemsForTransactions();
+        } else {
+            setTransactionItems(new Map());
+        }
+    }, [transactions]);
 
     const getPaymentMethodColor = (method: string) => {
         switch (method.toLowerCase()) {
@@ -87,7 +152,9 @@ const TransactionsScreen: React.FC = () => {
                     </View>
                 ) : (
                     <View className="px-4">
-                        {transactions.map((transaction) => (
+                        {transactions.map((transaction) => {
+                            const itemInfo = transactionItems.get(transaction.id);
+                            return (
                             <TouchableOpacity
                                 key={transaction.id}
                                 className="bg-white border border-gray-200 rounded-lg p-4 mb-3"
@@ -119,6 +186,15 @@ const TransactionsScreen: React.FC = () => {
                                     </Text>
                                 </View>
 
+                                {itemInfo && (
+                                    <View className="flex-row items-center mb-2">
+                                        <Ionicons name="cube-outline" size={14} color="#6B7280" />
+                                        <Text className="text-sm text-gray-600 ml-1">
+                                            {itemInfo.itemCount} {itemInfo.itemCount === 1 ? 'item' : 'items'}: {itemInfo.itemsPreview}
+                                        </Text>
+                                    </View>
+                                )}
+
                                 {transaction.amountOnCredit > 0 && (
                                     <View className="bg-orange-50 rounded px-2 py-1">
                                         <Text className="text-xs text-orange-700">
@@ -149,7 +225,8 @@ const TransactionsScreen: React.FC = () => {
                                     <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                                 </View>
                             </TouchableOpacity>
-                        ))}
+                            );
+                        })}
                     </View>
                 )}
             </ScrollView>

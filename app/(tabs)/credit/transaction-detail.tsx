@@ -22,6 +22,17 @@ const TransactionDetailScreen: React.FC = () => {
     const [store, setStore] = useState<Store | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const safeParsePaymentMethods = (paymentMethodsStr?: string): string[] | null => {
+        if (!paymentMethodsStr) return null;
+        try {
+            const parsed = JSON.parse(paymentMethodsStr);
+            return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+        } catch (error) {
+            console.error('Error parsing payment methods:', error);
+            return null;
+        }
+    };
+
     useEffect(() => {
         const fetchTransactionDetails = async () => {
             if (!transactionId) return;
@@ -123,11 +134,54 @@ const TransactionDetailScreen: React.FC = () => {
                         </View>
                     )}
 
-                    <View className="flex-row justify-between items-center py-3 border-t border-gray-100">
-                        <Text className="text-gray-600">Payment Method</Text>
-                        <Text className="font-medium text-gray-900 capitalize">
-                            {sale.paymentMethod}
-                        </Text>
+                    <View className="py-3 border-t border-gray-100">
+                        <Text className="text-gray-600 mb-2">Payment Method</Text>
+                        {(() => {
+                            const parsedMethods = safeParsePaymentMethods(sale.paymentMethodsUsed);
+                            
+                            if (parsedMethods && parsedMethods.length > 0) {
+                                return (
+                                    <View>
+                                        {parsedMethods.map((method: string, index: number) => (
+                                            <View key={index} className="flex-row items-center mb-1">
+                                                <View className={`w-2 h-2 rounded-full mr-2 ${
+                                                    method === 'mpesa' ? 'bg-green-500' :
+                                                    method === 'cash' ? 'bg-orange-500' :
+                                                    method === 'store-credit' ? 'bg-blue-500' :
+                                                    'bg-gray-500'
+                                                }`} />
+                                                <Text className="font-medium text-gray-900 capitalize flex-1">
+                                                    {method === 'mpesa' ? 'M-Pesa' : 
+                                                     method === 'store-credit' ? 'Store Credit' : 
+                                                     method}
+                                                </Text>
+                                                {method === 'mpesa' && sale.mpesaAmount && sale.mpesaAmount > 0 && (
+                                                    <Text className="text-green-600 font-semibold">
+                                                        ${sale.mpesaAmount.toFixed(2)}
+                                                    </Text>
+                                                )}
+                                                {method === 'cash' && sale.cashAmount && sale.cashAmount > 0 && (
+                                                    <Text className="text-orange-600 font-semibold">
+                                                        ${sale.cashAmount.toFixed(2)}
+                                                    </Text>
+                                                )}
+                                                {method === 'store-credit' && sale.amountOnCredit > 0 && (
+                                                    <Text className="text-blue-600 font-semibold">
+                                                        ${sale.amountOnCredit.toFixed(2)}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        ))}
+                                    </View>
+                                );
+                            }
+                            
+                            return (
+                                <Text className="font-medium text-gray-900 capitalize">
+                                    {sale.paymentMethod}
+                                </Text>
+                            );
+                        })()}
                     </View>
 
                     <View className="flex-row justify-between items-center py-3 border-t border-gray-100">
