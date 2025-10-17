@@ -32,3 +32,40 @@ The application is built with Expo SDK 54, React 19.1.0, and React Native 0.81.4
 - **Expo Router**: File-system based router for Expo and React Native.
 - **Node.js**: Runtime environment (version 22).
 - **TypeScript**: Language superset for JavaScript (version 5.9).
+
+## Recent Updates
+
+### October 17, 2025
+- **Intelligent Partial Payment Auto-Fill System**
+  - **Smart Auto-Fill Logic**:
+    - First selection: Auto-fills with total amount when no payments entered yet
+    - Subsequent selections: Auto-fills with `Math.max(0, remaining)` to prevent overpayment
+    - When total already covered: Auto-fills with $0.00 instead of full total
+    - Manual editing: Once user types in a field, auto-fill is disabled for that field
+    - Tracks edit state: `hasManuallyEditedMpesa`, `hasManuallyEditedCash`, `hasManuallyEditedCredit`
+  
+  - **User Experience**:
+    - Users can freely type amounts without auto-override
+    - Switching payment methods preserves manually entered amounts
+    - Auto-fill only applies to empty, unedited fields
+    - Remaining balance automatically flows to next payment method when appropriate
+    - Prevents overpayment when one method already covers the total
+  
+  - **State Management**:
+    - All payment state (amounts, edit flags, customer selection) resets after successful payment
+    - Ensures clean slate for next transaction
+  
+  - **Payment Methods Tracking**:
+    - Added `payment_methods_used` field to sales table (JSON array of methods used)
+    - Added `mpesa_amount` and `cash_amount` fields to track individual payment amounts
+    - System saves all payment methods used in a transaction (e.g., ["mpesa", "cash", "store-credit"])
+  
+  - **Credit Balance Management**:
+    - Credit amount is automatically added to customer's current balance when sale completes
+    - Partial payments properly track amount paid vs amount on credit
+    - Customer balance updates happen in completeSale transaction
+  
+  - **Schema Update**:
+    - Database schema version updated to 3
+    - Added new fields: payment_methods_used, mpesa_amount, cash_amount
+    - Added state tracking: hasManuallyEditedMpesa, hasManuallyEditedCash, hasManuallyEditedCredit
