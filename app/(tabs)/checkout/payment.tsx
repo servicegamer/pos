@@ -56,6 +56,7 @@ const PaymentScreen: React.FC = () => {
         createAndSelectCustomer,
         processPayment,
         canProcessPayment,
+        getPaymentError,
         total,
         roundedTotal,
     } = useEnhancedCheckout(cart, cart.reduce((sum, item) => sum + item.price * item.quantity, 0));
@@ -455,9 +456,7 @@ const PaymentScreen: React.FC = () => {
                             <Text className="text-white text-center font-semibold text-lg">
                                 {isProcessing 
                                     ? 'Processing...' 
-                                    : remainingAmount > 0 
-                                        ? `Remaining $${remainingAmount.toFixed(2)}`
-                                        : `Pay $${roundedTotal.toFixed(2)}`
+                                    : getPaymentError() || `Pay $${roundedTotal.toFixed(2)}`
                                 }
                             </Text>
                         </TouchableOpacity>

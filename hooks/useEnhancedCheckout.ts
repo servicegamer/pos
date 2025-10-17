@@ -88,11 +88,16 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
     }, [state.customerSearchQuery, selectedBusiness]);
 
     const selectPaymentMethod = useCallback((method: 'mpesa' | 'store-credit' | 'cash') => {
+        const currentTotal = roundedTotal.toFixed(2);
+        
         setState((prev) => ({ 
             ...prev, 
             selectedPaymentMethod: method,
+            mpesaAmount: method === 'mpesa' ? currentTotal : '0',
+            cashAmount: method === 'cash' ? currentTotal : '0',
+            creditAmount: method === 'store-credit' ? currentTotal : '0',
         }));
-    }, []);
+    }, [roundedTotal]);
 
     const switchToPartialPayment = useCallback((fromMethod: 'mpesa' | 'cash', toMethod: 'mpesa' | 'cash' | 'store-credit') => {
         const remaining = remainingAmount;
@@ -157,13 +162,81 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         [selectedBusiness, selectCustomer],
     );
 
+    const getPaymentError = useCallback((): string | null => {
+        if (!user || !selectedStore) return 'Setup Required';
+        if (cartItems.length === 0) return 'Cart is Empty';
+        if (roundedTotal <= 0) return 'Invalid Total';
+
+        const totalPaidCalc = mpesaValue + cashValue + creditValue;
+        const difference = roundedTotal - totalPaidCalc;
+        
+        if (Math.abs(difference) > 0.001) {
+            if (difference > 0) {
+                return `Remaining $${difference.toFixed(2)}`;
+            } else {
+                return `Reduce by $${Math.abs(difference).toFixed(2)}`;
+            }
+        }
+
+        if (mpesaValue > 0 && !state.mpesaPhone.trim()) {
+            return 'Enter M-Pesa Phone';
+        }
+
+        if (creditValue > 0 && !state.selectedCustomer) {
+            return 'Select Customer';
+        }
+
+        return null;
+    }, [
+        selectedStore,
+        user,
+        cartItems,
+        state.mpesaPhone,
+        state.selectedCustomer,
+        mpesaValue,
+        cashValue,
+        creditValue,
+        roundedTotal,
+    ]);
+
+    const canProcessPayment = useCallback((): boolean => {
+        return getPaymentError() === null;
+    }, [getPaymentError]);
+
     const processPayment = useCallback(async (): Promise<boolean> => {
+        const validationError = getPaymentError();
+        if (validationError) {
+            console.error('Payment validation failed:', validationError);
+            return false;
+        }
+
         if (!user || !selectedStore) {
             console.error('User or store not selected');
             return false;
         }
 
-        if (requiresCustomer && !state.selectedCustomer) {
+        if (cartItems.length === 0) {
+            console.error('Cart is empty');
+            return false;
+        }
+
+        if (roundedTotal <= 0) {
+            console.error('Invalid total amount');
+            return false;
+        }
+
+        const totalPaidCalc = mpesaValue + cashValue + creditValue;
+        if (Math.abs(totalPaidCalc - roundedTotal) > 0.001) {
+            console.error('Payment amounts do not match total');
+            return false;
+        }
+
+        if (mpesaValue > 0 && !state.mpesaPhone.trim()) {
+            console.error('M-Pesa phone number required');
+            return false;
+        }
+
+        if (creditValue > 0 && !state.selectedCustomer) {
             console.error('Customer required for credit payments');
             return false;
         }
@@ -236,44 +309,21 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
             return false;
         }
     }, [
+        getPaymentError,
         user,
         selectedStore,
         state.selectedCustomer,
         state.selectedPaymentMethod,
         state.creditRemainingMethod,
+        state.mpesaPhone,
         mpesaValue,
         cashValue,
         creditValue,
         isPartialCredit,
         remainingAmount,
+        roundedTotal,
         total,
         cartItems,
-        requiresCustomer,
-    ]);
-
-    const canProcessPayment = useCallback((): boolean => {
-        if (!selectedStore || !user) return false;
-        if (cartItems.length === 0) return false;
-
-        const totalPaid = mpesaValue + cashValue + creditValue;
-        
-        if (Math.abs(totalPaid - roundedTotal) > 0.001) return false;
-
-        if (mpesaValue > 0 && !state.mpesaPhone.trim()) return false;
-
-        if (creditValue > 0 && !state.selectedCustomer) return false;
-
-        return true;
-    }, [
-        selectedStore,
-        user,
-        cartItems,
-        state.mpesaPhone,
-        state.selectedCustomer,
-        mpesaValue,
-        cashValue,
-        creditValue,
-        roundedTotal,
     ]);
 
     return {
@@ -299,6 +349,7 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         createAndSelectCustomer,
         processPayment,
         canProcessPayment,
+        getPaymentError,
         total,
         roundedTotal,
     };
