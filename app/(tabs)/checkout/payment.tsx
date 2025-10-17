@@ -453,7 +453,12 @@ const PaymentScreen: React.FC = () => {
                             disabled={!canProcessPayment() || isProcessing}
                         >
                             <Text className="text-white text-center font-semibold text-lg">
-                                {isProcessing ? 'Processing...' : `Pay $${roundedTotal.toFixed(2)}`}
+                                {isProcessing 
+                                    ? 'Processing...' 
+                                    : remainingAmount > 0 
+                                        ? `Remaining $${remainingAmount.toFixed(2)}`
+                                        : `Pay $${roundedTotal.toFixed(2)}`
+                                }
                             </Text>
                         </TouchableOpacity>
                     </View>
