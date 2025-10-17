@@ -36,7 +36,6 @@ export {
 // First, create the adapter to the underlying database:
 const adapter = new LokiJSAdapter({
     schema,
-    migrations,
     useWebWorker: false,
     useIncrementalIndexedDB: true,
     dbName: 'pos',

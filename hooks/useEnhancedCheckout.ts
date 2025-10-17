@@ -18,6 +18,9 @@ export interface EnhancedCheckoutState {
     searchResults: Customer[];
     isSearching: boolean;
     isProcessing: boolean;
+    hasManuallyEditedMpesa: boolean;
+    hasManuallyEditedCash: boolean;
+    hasManuallyEditedCredit: boolean;
 }
 
 export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
@@ -36,6 +39,9 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         searchResults: [],
         isSearching: false,
         isProcessing: false,
+        hasManuallyEditedMpesa: false,
+        hasManuallyEditedCash: false,
+        hasManuallyEditedCredit: false,
     });
 
     const roundToTwoDecimals = (num: number) => Math.round(num * 100) / 100;
@@ -88,34 +94,67 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
     }, [state.customerSearchQuery, selectedBusiness]);
 
     const selectPaymentMethod = useCallback((method: 'mpesa' | 'store-credit' | 'cash') => {
-        const currentTotal = roundedTotal.toFixed(2);
-        
-        setState((prev) => ({ 
-            ...prev, 
-            selectedPaymentMethod: method,
-            mpesaAmount: method === 'mpesa' ? currentTotal : '0',
-            cashAmount: method === 'cash' ? currentTotal : '0',
-            creditAmount: method === 'store-credit' ? currentTotal : '0',
-        }));
+        setState((prev) => {
+            const hasAnyAmount = parseFloat(prev.mpesaAmount || '0') > 0 || 
+                                parseFloat(prev.cashAmount || '0') > 0 || 
+                                parseFloat(prev.creditAmount || '0') > 0;
+            
+            const totalPaidSoFar = roundToTwoDecimals(
+                parseFloat(prev.mpesaAmount || '0') + 
+                parseFloat(prev.cashAmount || '0') + 
+                parseFloat(prev.creditAmount || '0')
+            );
+            const remaining = roundToTwoDecimals(roundedTotal - totalPaidSoFar);
+            
+            const amountToFill = hasAnyAmount && remaining > 0 ? remaining.toFixed(2) : roundedTotal.toFixed(2);
+            
+            const shouldFillMpesa = method === 'mpesa' && !prev.hasManuallyEditedMpesa && prev.mpesaAmount === '';
+            const shouldFillCash = method === 'cash' && !prev.hasManuallyEditedCash && prev.cashAmount === '';
+            const shouldFillCredit = method === 'store-credit' && !prev.hasManuallyEditedCredit && prev.creditAmount === '';
+            
+            return {
+                ...prev,
+                selectedPaymentMethod: method,
+                mpesaAmount: shouldFillMpesa ? amountToFill : prev.mpesaAmount,
+                cashAmount: shouldFillCash ? amountToFill : prev.cashAmount,
+                creditAmount: shouldFillCredit ? amountToFill : prev.creditAmount,
+            };
+        });
     }, [roundedTotal]);
 
     const switchToPartialPayment = useCallback((fromMethod: 'mpesa' | 'cash', toMethod: 'mpesa' | 'cash' | 'store-credit') => {
-        setState((prev) => ({
-            ...prev,
-            selectedPaymentMethod: toMethod,
-        }));
-    }, []);
+        setState((prev) => {
+            const totalPaidSoFar = roundToTwoDecimals(
+                parseFloat(prev.mpesaAmount || '0') + 
+                parseFloat(prev.cashAmount || '0') + 
+                parseFloat(prev.creditAmount || '0')
+            );
+            const remaining = roundToTwoDecimals(roundedTotal - totalPaidSoFar);
+            
+            const shouldFillMpesa = toMethod === 'mpesa' && !prev.hasManuallyEditedMpesa && prev.mpesaAmount === '';
+            const shouldFillCash = toMethod === 'cash' && !prev.hasManuallyEditedCash && prev.cashAmount === '';
+            const shouldFillCredit = toMethod === 'store-credit' && !prev.hasManuallyEditedCredit && prev.creditAmount === '';
+            
+            return {
+                ...prev,
+                selectedPaymentMethod: toMethod,
+                mpesaAmount: shouldFillMpesa ? remaining.toFixed(2) : prev.mpesaAmount,
+                cashAmount: shouldFillCash ? remaining.toFixed(2) : prev.cashAmount,
+                creditAmount: shouldFillCredit ? remaining.toFixed(2) : prev.creditAmount,
+            };
+        });
+    }, [roundedTotal]);
 
     const setMpesaAmount = useCallback((amount: string) => {
-        setState((prev) => ({ ...prev, mpesaAmount: amount }));
+        setState((prev) => ({ ...prev, mpesaAmount: amount, hasManuallyEditedMpesa: true }));
     }, []);
 
     const setCashAmount = useCallback((amount: string) => {
-        setState((prev) => ({ ...prev, cashAmount: amount }));
+        setState((prev) => ({ ...prev, cashAmount: amount, hasManuallyEditedCash: true }));
     }, []);
 
     const setCreditAmount = useCallback((amount: string) => {
-        setState((prev) => ({ ...prev, creditAmount: amount }));
+        setState((prev) => ({ ...prev, creditAmount: amount, hasManuallyEditedCredit: true }));
     }, []);
 
     const setMpesaPhone = useCallback((phone: string) => {
@@ -304,7 +343,22 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
             const sale = await salesService.createSale(saleData, items);
             await salesService.completeSale(sale.id, user.id);
 
-            setState((prev) => ({ ...prev, isProcessing: false }));
+            setState({
+                selectedPaymentMethod: null,
+                mpesaAmount: '',
+                mpesaPhone: '',
+                cashAmount: '',
+                creditAmount: '',
+                creditRemainingMethod: 'cash',
+                customerSearchQuery: '',
+                selectedCustomer: null,
+                searchResults: [],
+                isSearching: false,
+                isProcessing: false,
+                hasManuallyEditedMpesa: false,
+                hasManuallyEditedCash: false,
+                hasManuallyEditedCredit: false,
+            });
             return true;
         } catch (error) {
             console.error('Error processing payment:', error);
