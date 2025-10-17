@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,11 +26,22 @@ const TransactionsScreen: React.FC = () => {
         }
     };
 
-    const handleTransactionPress = (transaction: Sale) => {
-        router.push({
-            pathname: '/credit/transaction-detail',
-            params: { transactionId: transaction.id },
-        });
+    const handleTransactionPress = async (transaction: Sale) => {
+        if (!transaction || !transaction.id) {
+            Alert.alert('Error', 'Transaction not found');
+            return;
+        }
+
+        try {
+            await transaction.fetch();
+            router.push({
+                pathname: '/credit/transaction-detail',
+                params: { transactionId: transaction.id },
+            });
+        } catch (error) {
+            console.error('Transaction fetch error:', error);
+            Alert.alert('Error', 'This transaction no longer exists');
+        }
     };
 
     return (

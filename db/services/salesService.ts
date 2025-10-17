@@ -2,11 +2,13 @@ import { Q } from '@nozbe/watermelondb';
 import {
     customersCollection,
     database,
+    inventoryBatchesCollection,
     productsCollection,
     saleItemsCollection,
     salesCollection,
 } from '..';
 import { inventoryService } from './inventoryService';
+import InventoryBatch from '../models/inventory_batches';
 
 export const salesService = {
     async createSale(
@@ -74,16 +76,34 @@ export const salesService = {
                 );
 
                 if (inventory) {
-                    await inventoryService.adjustInventoryWithBatch(inventory.id, -item.quantity, {
-                        userId,
-                        batchType: 'sale',
-                        referenceId: saleId,
-                        notes: `Sale completed - ${item.quantity} units sold`,
+                    const quantityBefore = inventory.quantity || 0;
+                    const quantityChange = -item.quantity;
+                    const quantityAfter = quantityBefore + quantityChange;
+
+                    await inventory.update((inv) => {
+                        inv.quantity = quantityAfter;
+                    });
+
+                    await inventoryBatchesCollection.create((batch: InventoryBatch) => {
+                        batch.externalId = `batch_${Date.now()}_${Math.random()}`;
+                        batch.inventoryId = inventory.id;
+                        batch.productId = inventory.productId;
+                        batch.storeId = inventory.storeId;
+                        batch.userId = userId;
+                        batch.quantityChange = quantityChange;
+                        batch.quantityBefore = quantityBefore;
+                        batch.quantityAfter = quantityAfter;
+                        batch.costPerUnit = 0;
+                        batch.batchType = 'sale';
+                        batch.referenceId = saleId;
+                        batch.notes = `Sale completed - ${item.quantity} units sold`;
                     });
                 }
             }
 
-            await sale.markAsCompleted();
+            await sale.update((s) => {
+                s.status = 'completed';
+            });
 
             if (sale.customerId && sale.amountOnCredit && sale.amountOnCredit > 0) {
                 const customer = await customersCollection.find(sale.customerId);
