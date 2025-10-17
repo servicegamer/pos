@@ -69,3 +69,33 @@ The application is built with Expo SDK 54, React 19.1.0, and React Native 0.81.4
     - Database schema version updated to 3
     - Added new fields: payment_methods_used, mpesa_amount, cash_amount
     - Added state tracking: hasManuallyEditedMpesa, hasManuallyEditedCash, hasManuallyEditedCredit
+
+- **Enhanced Transaction Management**
+  - **Cart Management**:
+    - Cart automatically clears after successful payment completion
+    - Ensures clean state for next transaction
+  
+  - **Customer Management During Checkout**:
+    - Support for creating new customers during credit checkout
+    - Support for linking transactions to existing customers
+    - CustomerSearchSelector allows searching by name or phone
+    - Seamless flow for both new and returning customers
+  
+  - **Transaction Detail View**:
+    - Comprehensive payment method breakdown with color-coded indicators
+    - Shows individual amounts for M-Pesa, Cash, and Store Credit
+    - Safe JSON parsing with graceful fallback to legacy display
+    - Displays all transaction details: items, customer, cashier, store, payment methods
+    - Product-level detail showing quantity and prices for each item
+  
+  - **Transaction List Enhancements**:
+    - Shows product preview (first 2 items + count) for each transaction
+    - Preserves WatermelonDB model integrity for navigation
+    - Map-based architecture for efficient item metadata lookup
+    - Item count and preview displayed with cube icon
+  
+  - **Data Integrity**:
+    - Sale items properly linked to products via SaleItem model
+    - Customer balance automatically updates when credit is used
+    - Transaction-to-product relationship maintained throughout system
+    - All payment methods and amounts tracked in database
