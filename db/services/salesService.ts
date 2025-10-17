@@ -21,6 +21,9 @@ export const salesService = {
             discountPercentage?: number;
             totalAmount: number;
             paymentMethod: string;
+            paymentMethodsUsed?: string;
+            mpesaAmount?: number;
+            cashAmount?: number;
             onCredit: boolean;
             amountPaid?: number;
             amountOnCredit?: number;
@@ -43,6 +46,9 @@ export const salesService = {
                 s.discountPercentage = saleData.discountPercentage || 0;
                 s.totalAmount = saleData.totalAmount;
                 s.paymentMethod = saleData.paymentMethod;
+                s.paymentMethodsUsed = saleData.paymentMethodsUsed;
+                s.mpesaAmount = saleData.mpesaAmount;
+                s.cashAmount = saleData.cashAmount;
                 s.onCredit = saleData.onCredit;
                 s.amountPaid = saleData.amountPaid ?? saleData.totalAmount;
                 s.amountOnCredit = saleData.amountOnCredit ?? 0;

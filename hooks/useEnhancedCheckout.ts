@@ -242,6 +242,11 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
             let amountPaid = 0;
             let amountOnCredit = 0;
             let paymentMethod: string = state.selectedPaymentMethod || 'cash';
+            const paymentMethodsUsed: string[] = [];
+
+            if (mpesaValue > 0) paymentMethodsUsed.push('mpesa');
+            if (cashValue > 0) paymentMethodsUsed.push('cash');
+            if (creditValue > 0) paymentMethodsUsed.push('store-credit');
 
             if (mpesaValue > 0 && cashValue > 0) {
                 amountPaid = mpesaValue + cashValue;
@@ -281,6 +286,9 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
                 discountPercentage: 0,
                 totalAmount: total,
                 paymentMethod,
+                paymentMethodsUsed: JSON.stringify(paymentMethodsUsed),
+                mpesaAmount: mpesaValue,
+                cashAmount: cashValue,
                 onCredit,
                 amountPaid,
                 amountOnCredit,
