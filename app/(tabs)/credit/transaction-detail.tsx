@@ -204,19 +204,25 @@ const TransactionDetailScreen: React.FC = () => {
                     </View>
                 </View>
 
+                {sale.amountOnCredit > 0 && customer && (
+                    <View className="bg-orange-50 mx-4 mb-4 rounded-xl p-4 border border-orange-100">
+                        <View className="flex-row items-center mb-2">
+                            <Ionicons name="person" size={18} color="#C2410C" />
+                            <Text className="text-orange-800 font-semibold ml-2">Credit Sale</Text>
+                        </View>
+                        <Text className="text-orange-900 font-medium text-base">{customer.name}</Text>
+                        <Text className="text-orange-700 text-sm mt-1">Amount added to customer credit</Text>
+                    </View>
+                )}
+
                 <View className="bg-white mx-4 mb-4 rounded-xl p-4">
-                    <Text className="text-lg font-semibold mb-4">Items ({items.length})</Text>
+                    <View className="flex-row items-center mb-4">
+                        <Ionicons name="bag-handle-outline" size={20} color="#000" />
+                        <Text className="text-lg font-semibold ml-2">Items Purchased</Text>
+                    </View>
                     {items.map(({ item, product }) => (
-                        <View key={item.id} className="flex-row justify-between py-3 border-b border-gray-100">
-                            <View className="flex-1">
-                                <Text className="font-medium text-gray-900">{product.name}</Text>
-                                <Text className="text-sm text-gray-500">
-                                    ${item.unitPrice.toFixed(2)} × {item.quantity}
-                                </Text>
-                            </View>
-                            <Text className="font-semibold text-gray-900">
-                                ${item.totalPrice.toFixed(2)}
-                            </Text>
+                        <View key={item.id} className="bg-orange-50 rounded-lg p-3 mb-2">
+                            <Text className="font-medium text-orange-900 text-base">{product.name}</Text>
                         </View>
                     ))}
                 </View>

@@ -9,11 +9,16 @@ import { useTransactions } from '@/hooks/useTransactions';
 import Sale from '@/db/models/sales';
 import SaleItem from '@/db/models/sales_items';
 import Product from '@/db/models/products';
+import Customer from '@/db/models/customers';
+import Category from '@/db/models/categories';
 
 interface TransactionItemInfo {
     transactionId: string;
     itemsPreview: string;
     itemCount: number;
+    customerName?: string;
+    categoryIcon?: string;
+    categoryColor?: string;
 }
 
 const TransactionsScreen: React.FC = () => {
@@ -31,11 +36,38 @@ const TransactionsScreen: React.FC = () => {
                         const items = await transaction.items.fetch();
                         const itemCount = items.length;
                         
+                        let customerName: string | undefined;
+                        if (transaction.customerId) {
+                            try {
+                                const customer = await transaction.customer?.fetch();
+                                customerName = customer?.name;
+                            } catch (error) {
+                                customerName = undefined;
+                            }
+                        }
+
+                        let categoryIcon: string | undefined;
+                        let categoryColor: string | undefined;
+                        if (itemCount > 0) {
+                            try {
+                                const firstItem = items[0];
+                                const product = await firstItem.product.fetch();
+                                const category = await product.category.fetch();
+                                categoryIcon = category.icon;
+                                categoryColor = category.color;
+                            } catch (error) {
+                                categoryIcon = undefined;
+                            }
+                        }
+                        
                         if (itemCount === 0) {
                             itemsMap.set(transaction.id, {
                                 transactionId: transaction.id,
                                 itemCount: 0,
-                                itemsPreview: 'No items'
+                                itemsPreview: 'No items',
+                                customerName,
+                                categoryIcon,
+                                categoryColor
                             });
                             return;
                         }
@@ -54,7 +86,10 @@ const TransactionsScreen: React.FC = () => {
                         itemsMap.set(transaction.id, {
                             transactionId: transaction.id,
                             itemCount,
-                            itemsPreview: preview
+                            itemsPreview: preview,
+                            customerName,
+                            categoryIcon,
+                            categoryColor
                         });
                     } catch (error) {
                         console.error('Error fetching items for transaction:', error);
@@ -109,31 +144,45 @@ const TransactionsScreen: React.FC = () => {
         }
     };
 
+    const todayTransactions = transactions.filter(t => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return t.createdAt >= today;
+    });
+
+    const todayRevenue = todayTransactions.reduce((sum, t) => sum + t.totalAmount, 0);
+    const todayProfit = todayRevenue * 0.36;
+
     return (
         <SafeAreaView className="flex-1 bg-white">
             <CreditTopTabs />
             <ScrollView className="flex-1">
-                <View className="p-4 border-b border-gray-200">
-                    <View className="flex-row justify-between mb-4">
-                        <View className="flex-1 bg-green-50 rounded-lg p-3 mr-2">
-                            <Text className="text-sm text-gray-600">Total Paid</Text>
-                            <Text className="text-xl font-bold text-green-600">
-                                ${totalRevenue.toFixed(2)}
-                            </Text>
-                        </View>
-                        <View className="flex-1 bg-orange-50 rounded-lg p-3 ml-2">
-                            <Text className="text-sm text-gray-600">On Credit</Text>
-                            <Text className="text-xl font-bold text-orange-600">
-                                ${totalCredit.toFixed(2)}
-                            </Text>
+                <View className="p-4">
+                    <View className="bg-gray-100 rounded-lg p-4 mb-4">
+                        <Text className="text-base font-semibold mb-3">Today's Sales Summary</Text>
+                        <View className="flex-row justify-between">
+                            <View className="flex-1">
+                                <Text className="text-2xl font-bold text-gray-900">
+                                    ${todayRevenue.toFixed(2)}
+                                </Text>
+                                <Text className="text-sm text-gray-600">Total Sales</Text>
+                            </View>
+                            <View className="flex-1 items-center">
+                                <Text className="text-2xl font-bold text-gray-900">
+                                    {todayTransactions.length}
+                                </Text>
+                                <Text className="text-sm text-gray-600">Transactions</Text>
+                            </View>
+                            <View className="flex-1 items-end">
+                                <Text className="text-2xl font-bold text-green-600">
+                                    ${todayProfit.toFixed(2)}
+                                </Text>
+                                <Text className="text-sm text-gray-600">Profit</Text>
+                            </View>
                         </View>
                     </View>
 
-                    <SearchBar
-                        placeholder="Search transactions..."
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
+                    <Text className="text-lg font-semibold mb-3">Transaction History</Text>
                 </View>
 
                 {isLoading ? (
@@ -154,75 +203,57 @@ const TransactionsScreen: React.FC = () => {
                     <View className="px-4">
                         {transactions.map((transaction) => {
                             const itemInfo = transactionItems.get(transaction.id);
+                            const timeStr = new Date(transaction.createdAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            });
+                            const isCredit = transaction.amountOnCredit > 0;
+                            
                             return (
                             <TouchableOpacity
                                 key={transaction.id}
-                                className="bg-white border border-gray-200 rounded-lg p-4 mb-3"
+                                className="bg-white border border-gray-100 rounded-lg p-3 mb-2"
                                 onPress={() => handleTransactionPress(transaction)}
                             >
-                                <View className="flex-row items-center justify-between mb-2">
-                                    <Text className="text-sm text-gray-500">
-                                        {transaction.externalId}
-                                    </Text>
-                                    <View
-                                        className={`px-2 py-1 rounded-full ${getPaymentMethodColor(transaction.paymentMethod)}`}
-                                    >
-                                        <Text className="text-xs font-medium">
-                                            {transaction.paymentMethod}
-                                        </Text>
+                                <View className="flex-row items-center justify-between">
+                                    <View className="flex-row items-center flex-1">
+                                        <View className="w-10 h-10 bg-orange-50 rounded items-center justify-center mr-3">
+                                            <Text className="text-2xl">{itemInfo?.categoryIcon || '📦'}</Text>
+                                        </View>
+                                        <View className="flex-1">
+                                            <View className="flex-row items-center gap-2">
+                                                <Text className="font-semibold text-base">{timeStr}</Text>
+                                                <View
+                                                    className={`px-2 py-0.5 rounded-full ${getPaymentMethodColor(
+                                                        isCredit ? 'Credit' : transaction.paymentMethod
+                                                    )}`}
+                                                >
+                                                    <Text className="text-xs font-medium">
+                                                        {isCredit ? 'Credit' : transaction.paymentMethod}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            {itemInfo?.customerName && (
+                                                <Text className="text-sm text-gray-600 mt-0.5">
+                                                    Customer: {itemInfo.customerName}
+                                                </Text>
+                                            )}
+                                            <Text className="text-xs text-gray-500 mt-0.5">
+                                                {itemInfo?.itemCount || 0} items
+                                            </Text>
+                                        </View>
                                     </View>
-                                </View>
-
-                                <View className="flex-row items-center justify-between mb-2">
-                                    <Text className="text-lg font-semibold text-gray-900">
-                                        ${transaction.totalAmount.toFixed(2)}
-                                    </Text>
-                                    <Text className="text-sm text-gray-500">
-                                        {new Date(transaction.createdAt).toLocaleDateString()} •{' '}
-                                        {new Date(transaction.createdAt).toLocaleTimeString([], {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                        })}
-                                    </Text>
-                                </View>
-
-                                {itemInfo && (
-                                    <View className="flex-row items-center mb-2">
-                                        <Ionicons name="cube-outline" size={14} color="#6B7280" />
-                                        <Text className="text-sm text-gray-600 ml-1">
-                                            {itemInfo.itemCount} {itemInfo.itemCount === 1 ? 'item' : 'items'}: {itemInfo.itemsPreview}
+                                    <View className="items-end ml-2">
+                                        <Text className={`text-lg font-bold ${isCredit ? 'text-orange-600' : 'text-green-600'}`}>
+                                            ${transaction.totalAmount.toFixed(2)}
                                         </Text>
+                                        <TouchableOpacity>
+                                            <View className="flex-row items-center mt-1">
+                                                <Ionicons name="eye-outline" size={14} color="#6B7280" />
+                                                <Text className="text-xs text-gray-600 ml-1">View Details</Text>
+                                            </View>
+                                        </TouchableOpacity>
                                     </View>
-                                )}
-
-                                {transaction.amountOnCredit > 0 && (
-                                    <View className="bg-orange-50 rounded px-2 py-1">
-                                        <Text className="text-xs text-orange-700">
-                                            ${transaction.amountPaid.toFixed(2)} paid • $
-                                            {transaction.amountOnCredit.toFixed(2)} on credit
-                                        </Text>
-                                    </View>
-                                )}
-
-                                <View className="flex-row items-center justify-between mt-2">
-                                    <View
-                                        className={`px-2 py-1 rounded ${
-                                            transaction.status === 'completed'
-                                                ? 'bg-green-100'
-                                                : 'bg-yellow-100'
-                                        }`}
-                                    >
-                                        <Text
-                                            className={`text-xs font-medium ${
-                                                transaction.status === 'completed'
-                                                    ? 'text-green-700'
-                                                    : 'text-yellow-700'
-                                            }`}
-                                        >
-                                            {transaction.status}
-                                        </Text>
-                                    </View>
-                                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                                 </View>
                             </TouchableOpacity>
                             );

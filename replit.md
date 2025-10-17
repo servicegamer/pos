@@ -35,7 +35,7 @@ The application is built with Expo SDK 54, React 19.1.0, and React Native 0.81.4
 
 ## Recent Updates
 
-### October 17, 2025
+### October 17, 2025 - Credit & Transaction UI Enhancements
 - **Intelligent Partial Payment Auto-Fill System**
   - **Smart Auto-Fill Logic**:
     - First selection: Auto-fills with total amount when no payments entered yet
@@ -69,6 +69,41 @@ The application is built with Expo SDK 54, React 19.1.0, and React Native 0.81.4
     - Database schema version updated to 3
     - Added new fields: payment_methods_used, mpesa_amount, cash_amount
     - Added state tracking: hasManuallyEditedMpesa, hasManuallyEditedCash, hasManuallyEditedCredit
+
+- **Credit & Transactions UI Overhaul**
+  - **Credit Tab Improvements**:
+    - Record Payment form at top with customer search and amount input
+    - Interactive search functionality with TextInput
+    - Credit rating badges (Good/Medium/Low) based on balance thresholds (>$100=Low, >$50=Medium, ≤$50=Good)
+    - Customer list shows outstanding balances with navigation to detail page
+    - Due date display (Note: Currently placeholder due to database schema limitations - no due_date field in Customer model)
+  
+  - **Customer Detail Page**:
+    - Real-time data from WatermelonDB (customer, transactions)
+    - Credit overview card showing current balance, total credits, total payments
+    - Transaction history listing customer's credit purchases
+    - Delete customer functionality with soft delete
+    - Proper navigation between credit list and transaction details
+  
+  - **Transactions Tab Enhancements**:
+    - Today's Sales Summary card (total sales, transaction count, estimated profit)
+    - Category icons displayed from product's first category
+    - Time-only display (HH:MM format) instead of full datetime
+    - Customer names shown for credit transactions
+    - Payment method color-coded badges (Cash/Credit/M-Pesa/Card)
+    - Enhanced data fetching for customer and category metadata per transaction
+  
+  - **Transaction Detail Page**:
+    - Credit sale info box (orange highlight) when amountOnCredit > 0
+    - Shows customer name and credit message
+    - Simplified items display with product names in styled boxes
+    - Complete payment method breakdown with individual amounts
+    - Category icon and transaction metadata
+  
+  - **Reusable Components**:
+    - CreditRatingBadge component with color-coded ratings
+    - RecordPaymentForm for consistent payment recording UI
+    - Enhanced transaction list with Map-based item metadata storage
 
 - **Enhanced Transaction Management**
   - **Cart Management**:
