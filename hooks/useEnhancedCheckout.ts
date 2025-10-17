@@ -7,7 +7,7 @@ import Customer from '@/db/models/customers';
 import type { CartItem } from '@/types';
 
 export interface EnhancedCheckoutState {
-    selectedPaymentMethod: 'mpesa' | 'store-credit' | 'cash';
+    selectedPaymentMethod: 'mpesa' | 'store-credit' | 'cash' | null;
     mpesaAmount: string;
     mpesaPhone: string;
     cashAmount: string;
@@ -25,7 +25,7 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
     const { selectedStore, selectedBusiness } = useBusiness();
 
     const [state, setState] = useState<EnhancedCheckoutState>({
-        selectedPaymentMethod: 'cash',
+        selectedPaymentMethod: null,
         mpesaAmount: '',
         mpesaPhone: '',
         cashAmount: '',
@@ -45,18 +45,20 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
     const creditValue = roundToTwoDecimals(parseFloat(state.creditAmount) || 0);
     const roundedTotal = roundToTwoDecimals(total);
 
+    const totalPaid = roundToTwoDecimals(mpesaValue + cashValue + creditValue);
+    const remainingAmount = roundToTwoDecimals(roundedTotal - totalPaid);
+
+    const isPartialCash = state.selectedPaymentMethod === 'cash' && 
+                          cashValue > 0 && 
+                          remainingAmount > 0;
+    
+    const isPartialMpesa = state.selectedPaymentMethod === 'mpesa' && 
+                           mpesaValue > 0 && 
+                           remainingAmount > 0;
+
     const isPartialCredit = state.selectedPaymentMethod === 'store-credit' && 
                             creditValue > 0 && 
-                            creditValue < roundedTotal;
-
-    const getRemainingAmount = (): number => {
-        if (state.selectedPaymentMethod === 'store-credit' && isPartialCredit) {
-            return roundToTwoDecimals(roundedTotal - creditValue);
-        }
-        return 0;
-    };
-
-    const remainingAmount = getRemainingAmount();
+                            remainingAmount > 0;
 
     const requiresCustomer = state.selectedPaymentMethod === 'store-credit' && creditValue > 0;
 
@@ -89,11 +91,20 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         setState((prev) => ({ 
             ...prev, 
             selectedPaymentMethod: method,
-            mpesaAmount: method === 'mpesa' ? total.toFixed(2) : '',
-            cashAmount: method === 'cash' ? total.toFixed(2) : '',
-            creditAmount: '',
         }));
-    }, [total]);
+    }, []);
+
+    const switchToPartialPayment = useCallback((fromMethod: 'mpesa' | 'cash', toMethod: 'mpesa' | 'cash' | 'store-credit') => {
+        const remaining = remainingAmount;
+        
+        setState((prev) => ({
+            ...prev,
+            selectedPaymentMethod: toMethod,
+            mpesaAmount: toMethod === 'mpesa' ? remaining.toFixed(2) : prev.mpesaAmount,
+            cashAmount: toMethod === 'cash' ? remaining.toFixed(2) : prev.cashAmount,
+            creditAmount: toMethod === 'store-credit' ? remaining.toFixed(2) : prev.creditAmount,
+        }));
+    }, [remainingAmount]);
 
     const setMpesaAmount = useCallback((amount: string) => {
         setState((prev) => ({ ...prev, mpesaAmount: amount }));
@@ -162,9 +173,20 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         try {
             let amountPaid = 0;
             let amountOnCredit = 0;
-            let paymentMethod = state.selectedPaymentMethod;
+            let paymentMethod: string = state.selectedPaymentMethod || 'cash';
 
-            if (state.selectedPaymentMethod === 'mpesa') {
+            if (mpesaValue > 0 && cashValue > 0) {
+                amountPaid = mpesaValue + cashValue;
+                paymentMethod = 'split';
+            } else if (mpesaValue > 0 && creditValue > 0) {
+                amountPaid = mpesaValue;
+                amountOnCredit = creditValue;
+                paymentMethod = 'mpesa';
+            } else if (cashValue > 0 && creditValue > 0) {
+                amountPaid = cashValue;
+                amountOnCredit = creditValue;
+                paymentMethod = 'cash';
+            } else if (state.selectedPaymentMethod === 'mpesa') {
                 amountPaid = mpesaValue;
                 paymentMethod = 'mpesa';
             } else if (state.selectedPaymentMethod === 'cash') {
@@ -233,46 +255,40 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         if (!selectedStore || !user) return false;
         if (cartItems.length === 0) return false;
 
-        if (state.selectedPaymentMethod === 'mpesa') {
-            if (mpesaValue !== roundedTotal) return false;
-            if (!state.mpesaPhone.trim()) return false;
-        } else if (state.selectedPaymentMethod === 'cash') {
-            if (cashValue !== roundedTotal) return false;
-        } else if (state.selectedPaymentMethod === 'store-credit') {
-            if (creditValue <= 0 || creditValue > roundedTotal) return false;
-            if (!state.selectedCustomer) return false;
-            if (isPartialCredit) {
-                if (state.creditRemainingMethod === 'mpesa' && !state.mpesaPhone.trim()) {
-                    return false;
-                }
-            }
-        }
+        const totalPaid = mpesaValue + cashValue + creditValue;
+        
+        if (Math.abs(totalPaid - roundedTotal) > 0.001) return false;
+
+        if (mpesaValue > 0 && !state.mpesaPhone.trim()) return false;
+
+        if (creditValue > 0 && !state.selectedCustomer) return false;
 
         return true;
     }, [
         selectedStore,
         user,
         cartItems,
-        state.selectedPaymentMethod,
         state.mpesaPhone,
         state.selectedCustomer,
-        state.creditRemainingMethod,
         mpesaValue,
         cashValue,
         creditValue,
         roundedTotal,
-        isPartialCredit,
     ]);
 
     return {
         ...state,
         requiresCustomer,
         isPartialCredit,
+        isPartialCash,
+        isPartialMpesa,
         remainingAmount,
+        totalPaid,
         mpesaValue,
         cashValue,
         creditValue,
         selectPaymentMethod,
+        switchToPartialPayment,
         setMpesaAmount,
         setCashAmount,
         setCreditAmount,
@@ -284,5 +300,6 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         processPayment,
         canProcessPayment,
         total,
+        roundedTotal,
     };
 };

@@ -22,6 +22,7 @@ import { useCart } from '@/contexts/CartContext';
 const PaymentScreen: React.FC = () => {
     const { cart, clearCart } = useCart();
     const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+    const [showPartialPaymentOptions, setShowPartialPaymentOptions] = useState<'cash' | 'mpesa' | null>(null);
 
     const {
         selectedPaymentMethod,
@@ -37,11 +38,14 @@ const PaymentScreen: React.FC = () => {
         isProcessing,
         requiresCustomer,
         isPartialCredit,
+        isPartialCash,
+        isPartialMpesa,
         remainingAmount,
         mpesaValue,
         cashValue,
         creditValue,
         selectPaymentMethod,
+        switchToPartialPayment,
         setMpesaAmount,
         setCashAmount,
         setCreditAmount,
@@ -53,6 +57,7 @@ const PaymentScreen: React.FC = () => {
         processPayment,
         canProcessPayment,
         total,
+        roundedTotal,
     } = useEnhancedCheckout(cart, cart.reduce((sum, item) => sum + item.price * item.quantity, 0));
 
     const handleProcessPayment = async () => {
@@ -70,6 +75,11 @@ const PaymentScreen: React.FC = () => {
         } else {
             Alert.alert('Error', 'Failed to process payment. Please try again.');
         }
+    };
+
+    const handlePartialPaymentSelect = (fromMethod: 'cash' | 'mpesa', toMethod: 'mpesa' | 'cash' | 'store-credit') => {
+        switchToPartialPayment(fromMethod, toMethod);
+        setShowPartialPaymentOptions(null);
     };
 
     return (
@@ -91,6 +101,87 @@ const PaymentScreen: React.FC = () => {
 
                     <View className="px-4 py-4">
                         <TouchableOpacity
+                            onPress={() => selectPaymentMethod('cash')}
+                            className={`rounded-xl p-4 mb-4 border ${
+                                selectedPaymentMethod === 'cash'
+                                    ? 'bg-orange-50 border-orange-500'
+                                    : 'bg-white border-gray-200'
+                            }`}
+                        >
+                            <View className="flex-row items-center">
+                                <View className="w-12 h-12 bg-orange-500 rounded-lg items-center justify-center mr-3">
+                                    <Ionicons name="cash-outline" size={24} color="#fff" />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-lg font-semibold text-gray-900">Cash</Text>
+                                    <Text className="text-sm text-gray-500">Cash payment</Text>
+                                </View>
+                                {cashValue > 0 && selectedPaymentMethod !== 'cash' && (
+                                    <View className="bg-orange-500 px-3 py-1 rounded-lg">
+                                        <Text className="text-white font-semibold">
+                                            ${cashValue.toFixed(2)}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+
+                            {selectedPaymentMethod === 'cash' && (
+                                <View className="mt-4">
+                                    <Text className="text-sm font-medium text-gray-700 mb-2">
+                                        Amount to pay
+                                    </Text>
+                                    <View className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 mb-3">
+                                        <Text className="text-gray-600 mr-2">$</Text>
+                                        <TextInput
+                                            className="flex-1 text-base"
+                                            placeholder="0.00"
+                                            value={cashAmount}
+                                            onChangeText={setCashAmount}
+                                            keyboardType="decimal-pad"
+                                        />
+                                    </View>
+
+                                    {isPartialCash && !showPartialPaymentOptions && (
+                                        <TouchableOpacity
+                                            onPress={() => setShowPartialPaymentOptions('cash')}
+                                            className="bg-blue-500 rounded-lg py-3 mb-3"
+                                        >
+                                            <Text className="text-white text-center font-semibold">
+                                                Partial Payments (${remainingAmount.toFixed(2)} remaining)
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+
+                                    {showPartialPaymentOptions === 'cash' && (
+                                        <View className="bg-gray-100 rounded-lg p-3 mb-3">
+                                            <Text className="text-sm font-medium text-gray-700 mb-2">
+                                                Pay remaining ${remainingAmount.toFixed(2)} with:
+                                            </Text>
+                                            <View className="flex-row gap-2">
+                                                <TouchableOpacity
+                                                    onPress={() => handlePartialPaymentSelect('cash', 'mpesa')}
+                                                    className="flex-1 bg-green-500 rounded-lg py-3"
+                                                >
+                                                    <Text className="text-white text-center font-medium">
+                                                        M-Pesa
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() => handlePartialPaymentSelect('cash', 'store-credit')}
+                                                    className="flex-1 bg-blue-500 rounded-lg py-3"
+                                                >
+                                                    <Text className="text-white text-center font-medium">
+                                                        Store Credit
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
                             onPress={() => selectPaymentMethod('mpesa')}
                             className={`rounded-xl p-4 mb-4 border ${
                                 selectedPaymentMethod === 'mpesa'
@@ -106,6 +197,13 @@ const PaymentScreen: React.FC = () => {
                                     <Text className="text-lg font-semibold text-gray-900">M-Pesa</Text>
                                     <Text className="text-sm text-gray-500">Pay with mobile money</Text>
                                 </View>
+                                {mpesaValue > 0 && selectedPaymentMethod !== 'mpesa' && (
+                                    <View className="bg-green-500 px-3 py-1 rounded-lg">
+                                        <Text className="text-white font-semibold">
+                                            ${mpesaValue.toFixed(2)}
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
 
                             {selectedPaymentMethod === 'mpesa' && (
@@ -113,7 +211,7 @@ const PaymentScreen: React.FC = () => {
                                     <Text className="text-sm font-medium text-gray-700 mb-2">
                                         Amount to pay
                                     </Text>
-                                    <View className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3 mb-3 bg-gray-50">
+                                    <View className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 mb-3">
                                         <Text className="text-gray-600 mr-2">$</Text>
                                         <TextInput
                                             className="flex-1 text-base"
@@ -127,7 +225,7 @@ const PaymentScreen: React.FC = () => {
                                     <Text className="text-sm font-medium text-gray-700 mb-2">
                                         Phone number
                                     </Text>
-                                    <View className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50">
+                                    <View className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 mb-3">
                                         <TextInput
                                             className="text-base"
                                             placeholder="Phone number (07XX XXX XXX)"
@@ -136,6 +234,43 @@ const PaymentScreen: React.FC = () => {
                                             keyboardType="phone-pad"
                                         />
                                     </View>
+
+                                    {isPartialMpesa && !showPartialPaymentOptions && (
+                                        <TouchableOpacity
+                                            onPress={() => setShowPartialPaymentOptions('mpesa')}
+                                            className="bg-blue-500 rounded-lg py-3 mb-3"
+                                        >
+                                            <Text className="text-white text-center font-semibold">
+                                                Partial Payments (${remainingAmount.toFixed(2)} remaining)
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+
+                                    {showPartialPaymentOptions === 'mpesa' && (
+                                        <View className="bg-gray-100 rounded-lg p-3 mb-3">
+                                            <Text className="text-sm font-medium text-gray-700 mb-2">
+                                                Pay remaining ${remainingAmount.toFixed(2)} with:
+                                            </Text>
+                                            <View className="flex-row gap-2">
+                                                <TouchableOpacity
+                                                    onPress={() => handlePartialPaymentSelect('mpesa', 'cash')}
+                                                    className="flex-1 bg-orange-500 rounded-lg py-3"
+                                                >
+                                                    <Text className="text-white text-center font-medium">
+                                                        Cash
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() => handlePartialPaymentSelect('mpesa', 'store-credit')}
+                                                    className="flex-1 bg-blue-500 rounded-lg py-3"
+                                                >
+                                                    <Text className="text-white text-center font-medium">
+                                                        Store Credit
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    )}
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -156,6 +291,13 @@ const PaymentScreen: React.FC = () => {
                                     <Text className="text-lg font-semibold text-white">Store Credit</Text>
                                     <Text className="text-sm text-gray-400">Use customer credit</Text>
                                 </View>
+                                {creditValue > 0 && selectedPaymentMethod !== 'store-credit' && (
+                                    <View className="bg-blue-500 px-3 py-1 rounded-lg">
+                                        <Text className="text-white font-semibold">
+                                            ${creditValue.toFixed(2)}
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
 
                             {selectedPaymentMethod === 'store-credit' && (
@@ -175,7 +317,7 @@ const PaymentScreen: React.FC = () => {
                                         />
                                     </View>
                                     <Text className="text-xs text-gray-400 mb-4">
-                                        Maximum: ${total.toFixed(2)}
+                                        Maximum: ${roundedTotal.toFixed(2)}
                                     </Text>
 
                                     {isPartialCredit && (
@@ -300,43 +442,6 @@ const PaymentScreen: React.FC = () => {
                                 </View>
                             )}
                         </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => selectPaymentMethod('cash')}
-                            className={`rounded-xl p-4 mb-4 border ${
-                                selectedPaymentMethod === 'cash'
-                                    ? 'bg-orange-50 border-orange-500'
-                                    : 'bg-white border-gray-200'
-                            }`}
-                        >
-                            <View className="flex-row items-center">
-                                <View className="w-12 h-12 bg-orange-500 rounded-lg items-center justify-center mr-3">
-                                    <Ionicons name="cash-outline" size={24} color="#fff" />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-lg font-semibold text-gray-900">Cash</Text>
-                                    <Text className="text-sm text-gray-500">Cash payment</Text>
-                                </View>
-                            </View>
-
-                            {selectedPaymentMethod === 'cash' && (
-                                <View className="mt-4">
-                                    <Text className="text-sm font-medium text-gray-700 mb-2">
-                                        Amount to pay
-                                    </Text>
-                                    <View className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3 bg-gray-50">
-                                        <Text className="text-gray-600 mr-2">$</Text>
-                                        <TextInput
-                                            className="flex-1 text-base"
-                                            placeholder="0.00"
-                                            value={cashAmount}
-                                            onChangeText={setCashAmount}
-                                            keyboardType="decimal-pad"
-                                        />
-                                    </View>
-                                </View>
-                            )}
-                        </TouchableOpacity>
                     </View>
 
                     <View className="bg-white px-4 py-4 mt-2">
@@ -348,7 +453,7 @@ const PaymentScreen: React.FC = () => {
                             disabled={!canProcessPayment() || isProcessing}
                         >
                             <Text className="text-white text-center font-semibold text-lg">
-                                {isProcessing ? 'Processing...' : `Pay $${total.toFixed(2)}`}
+                                {isProcessing ? 'Processing...' : `Pay $${roundedTotal.toFixed(2)}`}
                             </Text>
                         </TouchableOpacity>
                     </View>
