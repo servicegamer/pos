@@ -220,6 +220,29 @@ All services are located in `db/services/`:
 
 ### Recent Updates
 
+#### October 17, 2025
+- **Enhanced Payment System with Split Payments**
+  - **Payment Methods Tracking**
+    - Added `payment_methods_used` field to sales table (JSON array of methods used)
+    - Added `mpesa_amount` and `cash_amount` fields to track individual payment amounts
+    - System now saves all payment methods used in a transaction (e.g., ["mpesa", "cash", "store-credit"])
+    
+  - **Partial Payment Improvements**
+    - Fixed issue where typing in partial payment method would auto-fill and override user input
+    - Removed auto-fill behavior when switching to partial payment method
+    - Users can now freely type amounts in each payment method
+    - Payment methods array properly tracks all methods used in split payments
+    
+  - **Credit Balance Management**
+    - Credit amount is automatically added to customer's current balance when sale completes
+    - Partial payments properly track amount paid vs amount on credit
+    - Customer balance updates happen in completeSale transaction
+    
+  - **Schema Update**
+    - Database schema version updated to 3
+    - Added new fields: payment_methods_used, mpesa_amount, cash_amount
+    - Note: This is a breaking change for existing data (development environment)
+
 #### October 16, 2025
 - **Checkout System Refactoring - WatermelonDB Integration**
   - **CartContext Implementation**
