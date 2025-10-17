@@ -28,6 +28,9 @@ export default class Sale extends Model {
     @field('discount_percentage') discountPercentage!: number;
     @field('subtotal') subtotal!: number;
     @text('payment_method') paymentMethod!: string;
+    @text('payment_methods_used') paymentMethodsUsed?: string;
+    @field('mpesa_amount') mpesaAmount?: number;
+    @field('cash_amount') cashAmount?: number;
     @field('on_credit') onCredit!: boolean;
     @field('amount_paid') amountPaid!: number;
     @field('amount_on_credit') amountOnCredit!: number;

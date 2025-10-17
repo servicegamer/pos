@@ -166,6 +166,9 @@ export default appSchema({
                 { name: 'discount_percentage', type: 'number', isOptional: true },
                 { name: 'subtotal', type: 'number' },
                 { name: 'payment_method', type: 'string', isOptional: true },
+                { name: 'payment_methods_used', type: 'string', isOptional: true }, // JSON array of methods: ["mpesa", "cash"]
+                { name: 'mpesa_amount', type: 'number', isOptional: true }, // Amount paid via M-Pesa
+                { name: 'cash_amount', type: 'number', isOptional: true }, // Amount paid via Cash
                 { name: 'on_credit', type: 'boolean', isOptional: true },
                 { name: 'amount_paid', type: 'number', isOptional: true }, // Amount paid immediately
                 { name: 'amount_on_credit', type: 'number', isOptional: true }, // Amount on credit (partial payment)

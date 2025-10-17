@@ -100,16 +100,11 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
     }, [roundedTotal]);
 
     const switchToPartialPayment = useCallback((fromMethod: 'mpesa' | 'cash', toMethod: 'mpesa' | 'cash' | 'store-credit') => {
-        const remaining = remainingAmount;
-        
         setState((prev) => ({
             ...prev,
             selectedPaymentMethod: toMethod,
-            mpesaAmount: toMethod === 'mpesa' ? remaining.toFixed(2) : prev.mpesaAmount,
-            cashAmount: toMethod === 'cash' ? remaining.toFixed(2) : prev.cashAmount,
-            creditAmount: toMethod === 'store-credit' ? remaining.toFixed(2) : prev.creditAmount,
         }));
-    }, [remainingAmount]);
+    }, []);
 
     const setMpesaAmount = useCallback((amount: string) => {
         setState((prev) => ({ ...prev, mpesaAmount: amount }));
