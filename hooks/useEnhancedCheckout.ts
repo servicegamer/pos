@@ -6,15 +6,13 @@ import { salesService } from '@/db/services/salesService';
 import Customer from '@/db/models/customers';
 import type { CartItem } from '@/types';
 
-export interface PaymentSplit {
-    mpesa: string;
-    cash: string;
-    credit: string;
-    mpesaPhone: string;
-}
-
 export interface EnhancedCheckoutState {
-    paymentSplit: PaymentSplit;
+    selectedPaymentMethod: 'mpesa' | 'store-credit' | 'cash';
+    mpesaAmount: string;
+    mpesaPhone: string;
+    cashAmount: string;
+    creditAmount: string;
+    creditRemainingMethod: 'mpesa' | 'cash';
     customerSearchQuery: string;
     selectedCustomer: Customer | null;
     searchResults: Customer[];
@@ -27,12 +25,12 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
     const { selectedStore, selectedBusiness } = useBusiness();
 
     const [state, setState] = useState<EnhancedCheckoutState>({
-        paymentSplit: {
-            mpesa: '',
-            cash: '',
-            credit: '',
-            mpesaPhone: '',
-        },
+        selectedPaymentMethod: 'cash',
+        mpesaAmount: '',
+        mpesaPhone: '',
+        cashAmount: '',
+        creditAmount: '',
+        creditRemainingMethod: 'cash',
         customerSearchQuery: '',
         selectedCustomer: null,
         searchResults: [],
@@ -40,13 +38,27 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         isProcessing: false,
     });
 
-    const mpesaAmount = parseFloat(state.paymentSplit.mpesa) || 0;
-    const cashAmount = parseFloat(state.paymentSplit.cash) || 0;
-    const creditAmount = parseFloat(state.paymentSplit.credit) || 0;
-    const totalPaid = mpesaAmount + cashAmount;
-    const remainingBalance = total - totalPaid - creditAmount;
+    const roundToTwoDecimals = (num: number) => Math.round(num * 100) / 100;
 
-    const requiresCustomer = creditAmount > 0;
+    const mpesaValue = roundToTwoDecimals(parseFloat(state.mpesaAmount) || 0);
+    const cashValue = roundToTwoDecimals(parseFloat(state.cashAmount) || 0);
+    const creditValue = roundToTwoDecimals(parseFloat(state.creditAmount) || 0);
+    const roundedTotal = roundToTwoDecimals(total);
+
+    const isPartialCredit = state.selectedPaymentMethod === 'store-credit' && 
+                            creditValue > 0 && 
+                            creditValue < roundedTotal;
+
+    const getRemainingAmount = (): number => {
+        if (state.selectedPaymentMethod === 'store-credit' && isPartialCredit) {
+            return roundToTwoDecimals(roundedTotal - creditValue);
+        }
+        return 0;
+    };
+
+    const remainingAmount = getRemainingAmount();
+
+    const requiresCustomer = state.selectedPaymentMethod === 'store-credit' && creditValue > 0;
 
     useEffect(() => {
         const searchCustomers = async () => {
@@ -73,24 +85,34 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         return () => clearTimeout(timeoutId);
     }, [state.customerSearchQuery, selectedBusiness]);
 
-    const setPaymentAmount = useCallback((method: 'mpesa' | 'cash' | 'credit', amount: string) => {
-        setState((prev) => ({
-            ...prev,
-            paymentSplit: {
-                ...prev.paymentSplit,
-                [method]: amount,
-            },
+    const selectPaymentMethod = useCallback((method: 'mpesa' | 'store-credit' | 'cash') => {
+        setState((prev) => ({ 
+            ...prev, 
+            selectedPaymentMethod: method,
+            mpesaAmount: method === 'mpesa' ? total.toFixed(2) : '',
+            cashAmount: method === 'cash' ? total.toFixed(2) : '',
+            creditAmount: '',
         }));
+    }, [total]);
+
+    const setMpesaAmount = useCallback((amount: string) => {
+        setState((prev) => ({ ...prev, mpesaAmount: amount }));
+    }, []);
+
+    const setCashAmount = useCallback((amount: string) => {
+        setState((prev) => ({ ...prev, cashAmount: amount }));
+    }, []);
+
+    const setCreditAmount = useCallback((amount: string) => {
+        setState((prev) => ({ ...prev, creditAmount: amount }));
     }, []);
 
     const setMpesaPhone = useCallback((phone: string) => {
-        setState((prev) => ({
-            ...prev,
-            paymentSplit: {
-                ...prev.paymentSplit,
-                mpesaPhone: phone,
-            },
-        }));
+        setState((prev) => ({ ...prev, mpesaPhone: phone }));
+    }, []);
+
+    const setCreditRemainingMethod = useCallback((method: 'mpesa' | 'cash') => {
+        setState((prev) => ({ ...prev, creditRemainingMethod: method }));
     }, []);
 
     const setCustomerSearchQuery = useCallback((query: string) => {
@@ -138,16 +160,24 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         setState((prev) => ({ ...prev, isProcessing: true }));
 
         try {
-            const amountPaid = mpesaAmount + cashAmount;
-            const amountOnCredit = creditAmount;
+            let amountPaid = 0;
+            let amountOnCredit = 0;
+            let paymentMethod = state.selectedPaymentMethod;
 
-            let paymentMethod = 'cash';
-            if (mpesaAmount > 0 && cashAmount > 0) {
-                paymentMethod = 'split';
-            } else if (mpesaAmount > 0) {
+            if (state.selectedPaymentMethod === 'mpesa') {
+                amountPaid = mpesaValue;
                 paymentMethod = 'mpesa';
-            } else if (creditAmount > 0 && amountPaid === 0) {
-                paymentMethod = 'store-credit';
+            } else if (state.selectedPaymentMethod === 'cash') {
+                amountPaid = cashValue;
+                paymentMethod = 'cash';
+            } else if (state.selectedPaymentMethod === 'store-credit') {
+                amountOnCredit = creditValue;
+                if (isPartialCredit) {
+                    amountPaid = remainingAmount;
+                    paymentMethod = state.creditRemainingMethod;
+                } else {
+                    paymentMethod = 'store-credit';
+                }
             }
 
             const onCredit = amountOnCredit > 0;
@@ -187,9 +217,13 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         user,
         selectedStore,
         state.selectedCustomer,
-        mpesaAmount,
-        cashAmount,
-        creditAmount,
+        state.selectedPaymentMethod,
+        state.creditRemainingMethod,
+        mpesaValue,
+        cashValue,
+        creditValue,
+        isPartialCredit,
+        remainingAmount,
         total,
         cartItems,
         requiresCustomer,
@@ -199,39 +233,51 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
         if (!selectedStore || !user) return false;
         if (cartItems.length === 0) return false;
 
-        if (mpesaAmount < 0 || cashAmount < 0 || creditAmount < 0) return false;
-
-        if (Math.abs(remainingBalance) > 0.01) return false;
-
-        if (mpesaAmount > 0 && !state.paymentSplit.mpesaPhone.trim()) return false;
-
-        if (creditAmount > 0 && !state.selectedCustomer) return false;
-
-        if (mpesaAmount === 0 && cashAmount === 0 && creditAmount === 0) return false;
+        if (state.selectedPaymentMethod === 'mpesa') {
+            if (mpesaValue !== roundedTotal) return false;
+            if (!state.mpesaPhone.trim()) return false;
+        } else if (state.selectedPaymentMethod === 'cash') {
+            if (cashValue !== roundedTotal) return false;
+        } else if (state.selectedPaymentMethod === 'store-credit') {
+            if (creditValue <= 0 || creditValue > roundedTotal) return false;
+            if (!state.selectedCustomer) return false;
+            if (isPartialCredit) {
+                if (state.creditRemainingMethod === 'mpesa' && !state.mpesaPhone.trim()) {
+                    return false;
+                }
+            }
+        }
 
         return true;
     }, [
         selectedStore,
         user,
         cartItems,
-        mpesaAmount,
-        cashAmount,
-        creditAmount,
-        remainingBalance,
-        state.paymentSplit.mpesaPhone,
+        state.selectedPaymentMethod,
+        state.mpesaPhone,
         state.selectedCustomer,
+        state.creditRemainingMethod,
+        mpesaValue,
+        cashValue,
+        creditValue,
+        roundedTotal,
+        isPartialCredit,
     ]);
 
     return {
         ...state,
         requiresCustomer,
-        mpesaAmount,
-        cashAmount,
-        creditAmount,
-        totalPaid,
-        remainingBalance,
-        setPaymentAmount,
+        isPartialCredit,
+        remainingAmount,
+        mpesaValue,
+        cashValue,
+        creditValue,
+        selectPaymentMethod,
+        setMpesaAmount,
+        setCashAmount,
+        setCreditAmount,
         setMpesaPhone,
+        setCreditRemainingMethod,
         setCustomerSearchQuery,
         selectCustomer,
         createAndSelectCustomer,
