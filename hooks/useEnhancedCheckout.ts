@@ -106,7 +106,9 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
             );
             const remaining = roundToTwoDecimals(roundedTotal - totalPaidSoFar);
             
-            const amountToFill = hasAnyAmount && remaining > 0 ? remaining.toFixed(2) : roundedTotal.toFixed(2);
+            const amountToFill = hasAnyAmount 
+                ? Math.max(0, remaining).toFixed(2)
+                : roundedTotal.toFixed(2);
             
             const shouldFillMpesa = method === 'mpesa' && !prev.hasManuallyEditedMpesa && prev.mpesaAmount === '';
             const shouldFillCash = method === 'cash' && !prev.hasManuallyEditedCash && prev.cashAmount === '';
@@ -129,7 +131,7 @@ export const useEnhancedCheckout = (cartItems: CartItem[], total: number) => {
                 parseFloat(prev.cashAmount || '0') + 
                 parseFloat(prev.creditAmount || '0')
             );
-            const remaining = roundToTwoDecimals(roundedTotal - totalPaidSoFar);
+            const remaining = Math.max(0, roundToTwoDecimals(roundedTotal - totalPaidSoFar));
             
             const shouldFillMpesa = toMethod === 'mpesa' && !prev.hasManuallyEditedMpesa && prev.mpesaAmount === '';
             const shouldFillCash = toMethod === 'cash' && !prev.hasManuallyEditedCash && prev.cashAmount === '';
