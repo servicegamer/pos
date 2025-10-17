@@ -1,4 +1,4 @@
-modules = ["swift-5.8", "ruby-3.2", "nodejs-22"]
+modules = ["nodejs-20", "swift-5.8", "ruby-3.2"]
 [agent]
 expertMode = true
 
