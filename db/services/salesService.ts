@@ -20,6 +20,8 @@ export const salesService = {
             totalAmount: number;
             paymentMethod: string;
             onCredit: boolean;
+            amountPaid?: number;
+            amountOnCredit?: number;
         },
         items: {
             productId: string;
@@ -40,6 +42,8 @@ export const salesService = {
                 s.totalAmount = saleData.totalAmount;
                 s.paymentMethod = saleData.paymentMethod;
                 s.onCredit = saleData.onCredit;
+                s.amountPaid = saleData.amountPaid ?? saleData.totalAmount;
+                s.amountOnCredit = saleData.amountOnCredit ?? 0;
                 s.status = 'pending';
             });
 
@@ -81,11 +85,11 @@ export const salesService = {
 
             await sale.markAsCompleted();
 
-            if (sale.onCredit && sale.customerId) {
+            if (sale.customerId && sale.amountOnCredit && sale.amountOnCredit > 0) {
                 const customer = await customersCollection.find(sale.customerId);
 
                 await customer.update((c) => {
-                    c.currentBalance = (c.currentBalance || 0) + sale.totalAmount;
+                    c.currentBalance = (c.currentBalance || 0) + sale.amountOnCredit;
                 });
             }
 

@@ -2,6 +2,55 @@ import { Q } from '@nozbe/watermelondb';
 import { customersCollection, database } from '..';
 
 export const customerService = {
+    async findOrCreateCustomer(data: {
+        businessId: string;
+        name?: string;
+        phone?: string;
+        email?: string;
+        creditLimit?: number;
+    }) {
+        const searchPhone = data.phone?.trim();
+        const searchEmail = data.email?.trim();
+
+        if (searchPhone) {
+            const existingCustomer = await customersCollection
+                .query(
+                    Q.where('business_id', data.businessId),
+                    Q.where('phone', searchPhone),
+                    Q.where('deleted', false),
+                )
+                .fetch();
+
+            if (existingCustomer.length > 0) {
+                return { customer: existingCustomer[0], isNew: false };
+            }
+        }
+
+        if (searchEmail) {
+            const existingCustomer = await customersCollection
+                .query(
+                    Q.where('business_id', data.businessId),
+                    Q.where('email', searchEmail),
+                    Q.where('deleted', false),
+                )
+                .fetch();
+
+            if (existingCustomer.length > 0) {
+                return { customer: existingCustomer[0], isNew: false };
+            }
+        }
+
+        const newCustomer = await this.createCustomer({
+            businessId: data.businessId,
+            name: data.name || 'Walk-in Customer',
+            phone: searchPhone,
+            email: searchEmail,
+            creditLimit: data.creditLimit,
+        });
+
+        return { customer: newCustomer, isNew: true };
+    },
+
     async createCustomer(data: {
         businessId: string;
         name: string;

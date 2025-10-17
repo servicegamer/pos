@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-    version: 1,
+    version: 2,
     tables: [
         tableSchema({
             name: 'sessions',
@@ -167,6 +167,8 @@ export default appSchema({
                 { name: 'subtotal', type: 'number' },
                 { name: 'payment_method', type: 'string', isOptional: true },
                 { name: 'on_credit', type: 'boolean', isOptional: true },
+                { name: 'amount_paid', type: 'number', isOptional: true }, // Amount paid immediately
+                { name: 'amount_on_credit', type: 'number', isOptional: true }, // Amount on credit (partial payment)
                 { name: 'status', type: 'string', isOptional: true },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },

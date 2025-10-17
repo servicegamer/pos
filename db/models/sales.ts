@@ -29,6 +29,8 @@ export default class Sale extends Model {
     @field('subtotal') subtotal!: number;
     @text('payment_method') paymentMethod!: string;
     @field('on_credit') onCredit!: boolean;
+    @field('amount_paid') amountPaid!: number;
+    @field('amount_on_credit') amountOnCredit!: number;
     @text('status') status!: string;
     @readonly @date('created_at') createdAt!: Date;
     @readonly @date('updated_at') updatedAt!: Date;

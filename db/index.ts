@@ -15,6 +15,7 @@ import Staff from './models/staff';
 import Store from './models/stores';
 import User from './models/users';
 import schema from './schema';
+import migrations from './schemaMigrations';
 
 export {
     Business,
@@ -35,6 +36,7 @@ export {
 // First, create the adapter to the underlying database:
 const adapter = new LokiJSAdapter({
     schema,
+    migrations,
     useWebWorker: false,
     useIncrementalIndexedDB: true,
     dbName: 'pos',
